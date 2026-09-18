@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import ProtectedRoute from './ProtectedRoute';
+import Layout from '../components/common/Layout';
 
 import LoginPage from '../pages/auth/LoginPage';
 import CalendrierPage from '../pages/contribuable/CalendrierPage';
@@ -26,6 +27,14 @@ import TypesImpotsPage from '../pages/admin/TypesImpotsPage';
 import JoursFeriesPage from '../pages/admin/JoursFeriesPage';
 import ParametresPage from '../pages/admin/ParametresPage';
 
+function AvecLayout({ roles, children }) {
+  return (
+    <ProtectedRoute rolesAutorises={roles}>
+      <Layout>{children}</Layout>
+    </ProtectedRoute>
+  );
+}
+
 export default function AppRouter() {
   return (
     <BrowserRouter>
@@ -34,35 +43,35 @@ export default function AppRouter() {
         <Route path="/" element={<Navigate to="/login" replace />} />
 
         {/* Contribuable */}
-        <Route path="/contribuable/calendrier" element={<ProtectedRoute rolesAutorises={['CONTRIBUABLE']}><CalendrierPage /></ProtectedRoute>} />
-        <Route path="/contribuable/obligations" element={<ProtectedRoute rolesAutorises={['CONTRIBUABLE']}><ObligationsPage /></ProtectedRoute>} />
-        <Route path="/contribuable/declarations" element={<ProtectedRoute rolesAutorises={['CONTRIBUABLE']}><DeclarationsPage /></ProtectedRoute>} />
-        <Route path="/contribuable/declarations/deposer/:idObligation" element={<ProtectedRoute rolesAutorises={['CONTRIBUABLE']}><DeposerDeclarationPage /></ProtectedRoute>} />
-        <Route path="/contribuable/paiements" element={<ProtectedRoute rolesAutorises={['CONTRIBUABLE']}><PaiementsPage /></ProtectedRoute>} />
-        <Route path="/contribuable/dettes" element={<ProtectedRoute rolesAutorises={['CONTRIBUABLE']}><DettesPage /></ProtectedRoute>} />
-        <Route path="/contribuable/notifications" element={<ProtectedRoute rolesAutorises={['CONTRIBUABLE']}><NotificationsPage /></ProtectedRoute>} />
+        <Route path="/contribuable/calendrier" element={<AvecLayout roles={['CONTRIBUABLE']}><CalendrierPage /></AvecLayout>} />
+        <Route path="/contribuable/obligations" element={<AvecLayout roles={['CONTRIBUABLE']}><ObligationsPage /></AvecLayout>} />
+        <Route path="/contribuable/declarations" element={<AvecLayout roles={['CONTRIBUABLE']}><DeclarationsPage /></AvecLayout>} />
+        <Route path="/contribuable/declarations/deposer/:idObligation" element={<AvecLayout roles={['CONTRIBUABLE']}><DeposerDeclarationPage /></AvecLayout>} />
+        <Route path="/contribuable/paiements" element={<AvecLayout roles={['CONTRIBUABLE']}><PaiementsPage /></AvecLayout>} />
+        <Route path="/contribuable/dettes" element={<AvecLayout roles={['CONTRIBUABLE']}><DettesPage /></AvecLayout>} />
+        <Route path="/contribuable/notifications" element={<AvecLayout roles={['CONTRIBUABLE']}><NotificationsPage /></AvecLayout>} />
 
         {/* Agent */}
-        <Route path="/agent/dossiers" element={<ProtectedRoute rolesAutorises={['AGENT_GESTION', 'AGENT_RECETTE']}><DossiersPage /></ProtectedRoute>} />
-        <Route path="/agent/dossiers/:nif" element={<ProtectedRoute rolesAutorises={['AGENT_GESTION', 'AGENT_RECETTE']}><DossierDetailPage /></ProtectedRoute>} />
-        <Route path="/agent/declarations" element={<ProtectedRoute rolesAutorises={['AGENT_GESTION']}><DeclarationsAgentPage /></ProtectedRoute>} />
-        <Route path="/agent/paiements" element={<ProtectedRoute rolesAutorises={['AGENT_RECETTE']}><PaiementsAgentPage /></ProtectedRoute>} />
-        <Route path="/agent/dettes" element={<ProtectedRoute rolesAutorises={['AGENT_RECETTE']}><DettesAgentPage /></ProtectedRoute>} />
-        <Route path="/agent/notifications" element={<ProtectedRoute rolesAutorises={['AGENT_GESTION', 'AGENT_RECETTE']}><NotificationsAgentPage /></ProtectedRoute>} />
+        <Route path="/agent/dossiers" element={<AvecLayout roles={['AGENT_GESTION', 'AGENT_RECETTE']}><DossiersPage /></AvecLayout>} />
+        <Route path="/agent/dossiers/:nif" element={<AvecLayout roles={['AGENT_GESTION', 'AGENT_RECETTE']}><DossierDetailPage /></AvecLayout>} />
+        <Route path="/agent/declarations" element={<AvecLayout roles={['AGENT_GESTION']}><DeclarationsAgentPage /></AvecLayout>} />
+        <Route path="/agent/paiements" element={<AvecLayout roles={['AGENT_RECETTE']}><PaiementsAgentPage /></AvecLayout>} />
+        <Route path="/agent/dettes" element={<AvecLayout roles={['AGENT_RECETTE']}><DettesAgentPage /></AvecLayout>} />
+        <Route path="/agent/notifications" element={<AvecLayout roles={['AGENT_GESTION', 'AGENT_RECETTE']}><NotificationsAgentPage /></AvecLayout>} />
 
         {/* Responsable */}
-        <Route path="/responsable/dashboard" element={<ProtectedRoute rolesAutorises={['RESPONSABLE', 'ADMIN']}><DashboardPage /></ProtectedRoute>} />
-        <Route path="/responsable/indicateurs" element={<ProtectedRoute rolesAutorises={['RESPONSABLE', 'ADMIN']}><IndicateursPage /></ProtectedRoute>} />
-        <Route path="/responsable/retards" element={<ProtectedRoute rolesAutorises={['RESPONSABLE', 'ADMIN']}><RetardsPage /></ProtectedRoute>} />
-        <Route path="/responsable/recouvrement" element={<ProtectedRoute rolesAutorises={['RESPONSABLE', 'ADMIN']}><RecouvrementPage /></ProtectedRoute>} />
-        <Route path="/responsable/rapports" element={<ProtectedRoute rolesAutorises={['RESPONSABLE', 'ADMIN']}><RapportsPage /></ProtectedRoute>} />
+        <Route path="/responsable/dashboard" element={<AvecLayout roles={['RESPONSABLE', 'ADMIN']}><DashboardPage /></AvecLayout>} />
+        <Route path="/responsable/indicateurs" element={<AvecLayout roles={['RESPONSABLE', 'ADMIN']}><IndicateursPage /></AvecLayout>} />
+        <Route path="/responsable/retards" element={<AvecLayout roles={['RESPONSABLE', 'ADMIN']}><RetardsPage /></AvecLayout>} />
+        <Route path="/responsable/recouvrement" element={<AvecLayout roles={['RESPONSABLE', 'ADMIN']}><RecouvrementPage /></AvecLayout>} />
+        <Route path="/responsable/rapports" element={<AvecLayout roles={['RESPONSABLE', 'ADMIN']}><RapportsPage /></AvecLayout>} />
 
         {/* Admin */}
-        <Route path="/admin/utilisateurs" element={<ProtectedRoute rolesAutorises={['ADMIN']}><UtilisateursPage /></ProtectedRoute>} />
-        <Route path="/admin/roles" element={<ProtectedRoute rolesAutorises={['ADMIN']}><RolesPage /></ProtectedRoute>} />
-        <Route path="/admin/types-impots" element={<ProtectedRoute rolesAutorises={['ADMIN']}><TypesImpotsPage /></ProtectedRoute>} />
-        <Route path="/admin/jours-feries" element={<ProtectedRoute rolesAutorises={['ADMIN']}><JoursFeriesPage /></ProtectedRoute>} />
-        <Route path="/admin/parametres" element={<ProtectedRoute rolesAutorises={['ADMIN']}><ParametresPage /></ProtectedRoute>} />
+        <Route path="/admin/utilisateurs" element={<AvecLayout roles={['ADMIN']}><UtilisateursPage /></AvecLayout>} />
+        <Route path="/admin/roles" element={<AvecLayout roles={['ADMIN']}><RolesPage /></AvecLayout>} />
+        <Route path="/admin/types-impots" element={<AvecLayout roles={['ADMIN']}><TypesImpotsPage /></AvecLayout>} />
+        <Route path="/admin/jours-feries" element={<AvecLayout roles={['ADMIN']}><JoursFeriesPage /></AvecLayout>} />
+        <Route path="/admin/parametres" element={<AvecLayout roles={['ADMIN']}><ParametresPage /></AvecLayout>} />
 
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
