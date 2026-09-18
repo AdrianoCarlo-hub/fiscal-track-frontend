@@ -34,6 +34,7 @@ const MENUS = {
     { path: '/admin/types-impots', label: 'Types d impots' },
     { path: '/admin/jours-feries', label: 'Jours feries' },
     { path: '/admin/parametres', label: 'Parametres' },
+    { path: '/responsable/dashboard', label: 'Dashboard (vue globale)' },
   ],
 };
 
