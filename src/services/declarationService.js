@@ -2,6 +2,9 @@ import api from './api';
 
 const declarationService = {
   lister: async () => (await api.get('/api/declarations')).data,
+  listerPagine: async (page = 0, size = 20) =>
+    (await api.get('/api/declarations/paginated', { params: { page, size } })).data,
+
   parId: async (id) => (await api.get(`/api/declarations/${id}`)).data,
   parObligation: async (idObligation) =>
     (await api.get(`/api/declarations/obligation/${idObligation}`)).data,

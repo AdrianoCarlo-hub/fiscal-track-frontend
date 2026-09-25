@@ -2,6 +2,9 @@ import api from './api';
 
 const obligationService = {
   lister: async () => (await api.get('/api/obligations')).data,
+  listerPagine: async (page = 0, size = 20) =>
+    (await api.get('/api/obligations/paginated', { params: { page, size } })).data,
+
   parId: async (id) => (await api.get(`/api/obligations/${id}`)).data,
   parContribuable: async (nif) => (await api.get(`/api/obligations/contribuable/${nif}`)).data,
   parAgent: async (idAgent) => (await api.get(`/api/obligations/agent/${idAgent}`)).data,
