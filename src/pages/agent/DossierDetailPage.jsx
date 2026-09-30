@@ -4,6 +4,7 @@ import contribuableService from '../../services/contribuableService';
 import obligationService from '../../services/obligationService';
 import compteCourantService from '../../services/compteCourantService';
 import ObligationForm from '../../components/forms/ObligationForm';
+import ContribuableForm from '../../components/forms/ContribuableForm';
 import { formatMontant } from '../../utils/formatUtils';
 
 export default function DossierDetailPage() {
@@ -13,7 +14,8 @@ export default function DossierDetailPage() {
   const [obligations, setObligations] = useState([]);
   const [comptes, setComptes] = useState([]);
   const [chargement, setChargement] = useState(true);
-  const [modalOuvert, setModalOuvert] = useState(false);
+  const [modalObligationOuvert, setModalObligationOuvert] = useState(false);
+  const [modalModifOuvert, setModalModifOuvert] = useState(false);
 
   const charger = () => {
     setChargement(true);
@@ -49,12 +51,20 @@ export default function DossierDetailPage() {
             <h1 className="text-2xl font-bold text-slate-800">{contribuable.raisonSociale}</h1>
             <p className="text-slate-500 font-mono">{contribuable.nif}</p>
           </div>
-          <button
-            onClick={() => setModalOuvert(true)}
-            className="bg-sky-500 hover:bg-sky-600 text-white px-4 py-2 rounded-lg text-sm"
-          >
-            + Generer une obligation
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setModalModifOuvert(true)}
+              className="bg-slate-600 hover:bg-slate-700 text-white px-4 py-2 rounded-lg text-sm"
+            >
+              Modifier
+            </button>
+            <button
+              onClick={() => setModalObligationOuvert(true)}
+              className="bg-sky-500 hover:bg-sky-600 text-white px-4 py-2 rounded-lg text-sm"
+            >
+              + Generer une obligation
+            </button>
+          </div>
         </div>
         <div className="grid grid-cols-3 gap-4 mt-4 text-sm">
           <Info label="Forme juridique" value={contribuable.formeJuridique} />
@@ -122,12 +132,23 @@ export default function DossierDetailPage() {
         </table>
       </div>
 
-      {modalOuvert && (
+      {modalObligationOuvert && (
         <ObligationForm
           nif={nif}
-          onClose={() => setModalOuvert(false)}
+          onClose={() => setModalObligationOuvert(false)}
           onSuccess={() => {
-            setModalOuvert(false);
+            setModalObligationOuvert(false);
+            charger();
+          }}
+        />
+      )}
+
+      {modalModifOuvert && (
+        <ContribuableForm
+          contribuable={contribuable}
+          onClose={() => setModalModifOuvert(false)}
+          onSuccess={() => {
+            setModalModifOuvert(false);
             charger();
           }}
         />
