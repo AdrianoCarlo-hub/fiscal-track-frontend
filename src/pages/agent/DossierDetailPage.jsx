@@ -3,6 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import contribuableService from '../../services/contribuableService';
 import obligationService from '../../services/obligationService';
 import compteCourantService from '../../services/compteCourantService';
+import ObligationForm from '../../components/forms/ObligationForm';
+import { formatMontant } from '../../utils/formatUtils';
 
 export default function DossierDetailPage() {
   const { nif } = useParams();
@@ -11,8 +13,10 @@ export default function DossierDetailPage() {
   const [obligations, setObligations] = useState([]);
   const [comptes, setComptes] = useState([]);
   const [chargement, setChargement] = useState(true);
+  const [modalOuvert, setModalOuvert] = useState(false);
 
-  useEffect(() => {
+  const charger = () => {
+    setChargement(true);
     Promise.all([
       contribuableService.parNif(nif),
       obligationService.parContribuable(nif),
@@ -25,11 +29,11 @@ export default function DossierDetailPage() {
       })
       .catch(() => {})
       .finally(() => setChargement(false));
-  }, [nif]);
+  };
 
-  const formatMontant = (m) =>
-    new Intl.NumberFormat('fr-MG', { style: 'currency', currency: 'MGA', maximumFractionDigits: 0 })
-      .format(m || 0);
+  useEffect(() => {
+    charger();
+  }, [nif]);
 
   if (chargement) return <p>Chargement...</p>;
   if (!contribuable) return <p>Contribuable introuvable</p>;
@@ -40,8 +44,18 @@ export default function DossierDetailPage() {
         className="text-sky-600 hover:underline mb-4 text-sm">← Retour</button>
 
       <div className="bg-white p-6 rounded-xl shadow-sm mb-6">
-        <h1 className="text-2xl font-bold text-slate-800">{contribuable.raisonSociale}</h1>
-        <p className="text-slate-500 font-mono">{contribuable.nif}</p>
+        <div className="flex justify-between items-start">
+          <div>
+            <h1 className="text-2xl font-bold text-slate-800">{contribuable.raisonSociale}</h1>
+            <p className="text-slate-500 font-mono">{contribuable.nif}</p>
+          </div>
+          <button
+            onClick={() => setModalOuvert(true)}
+            className="bg-sky-500 hover:bg-sky-600 text-white px-4 py-2 rounded-lg text-sm"
+          >
+            + Generer une obligation
+          </button>
+        </div>
         <div className="grid grid-cols-3 gap-4 mt-4 text-sm">
           <Info label="Forme juridique" value={contribuable.formeJuridique} />
           <Info label="Regime" value={contribuable.regimeImposition} />
@@ -69,7 +83,15 @@ export default function DossierDetailPage() {
                 <td className="px-4 py-3">{o.codeImpot}</td>
                 <td className="px-4 py-3">{o.periodeFiscale}</td>
                 <td className="px-4 py-3 text-sm">{o.dateLimiteReelle}</td>
-                <td className="px-4 py-3 text-sm">{o.statutDeclaration}</td>
+                <td className="px-4 py-3 text-sm">
+                  <span className={`text-xs px-2 py-1 rounded ${
+                    o.statutDeclaration === 'DEPOSE' ? 'bg-green-100 text-green-700' :
+                    o.statutDeclaration === 'RETARD' ? 'bg-red-100 text-red-700' :
+                    'bg-yellow-100 text-yellow-700'
+                  }`}>
+                    {o.statutDeclaration}
+                  </span>
+                </td>
               </tr>
             ))}
           </tbody>
@@ -99,6 +121,17 @@ export default function DossierDetailPage() {
           </tbody>
         </table>
       </div>
+
+      {modalOuvert && (
+        <ObligationForm
+          nif={nif}
+          onClose={() => setModalOuvert(false)}
+          onSuccess={() => {
+            setModalOuvert(false);
+            charger();
+          }}
+        />
+      )}
     </div>
   );
 }
