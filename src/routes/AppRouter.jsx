@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import ProtectedRoute from './ProtectedRoute';
 import Layout from '../components/common/Layout';
 
+
 import LoginPage from '../pages/auth/LoginPage';
 import CalendrierPage from '../pages/contribuable/CalendrierPage';
 import ObligationsPage from '../pages/contribuable/ObligationsPage';
@@ -26,6 +27,7 @@ import RolesPage from '../pages/admin/RolesPage';
 import TypesImpotsPage from '../pages/admin/TypesImpotsPage';
 import JoursFeriesPage from '../pages/admin/JoursFeriesPage';
 import ParametresPage from '../pages/admin/ParametresPage';
+import SimulateurFiscalPage from '../pages/agent/SimulateurFiscalPage';
 
 function AvecLayout({ roles, children }) {
   return (
@@ -58,6 +60,14 @@ export default function AppRouter() {
         <Route path="/agent/paiements" element={<AvecLayout roles={['AGENT_RECETTE']}><PaiementsAgentPage /></AvecLayout>} />
         <Route path="/agent/dettes" element={<AvecLayout roles={['AGENT_RECETTE']}><DettesAgentPage /></AvecLayout>} />
         <Route path="/agent/notifications" element={<AvecLayout roles={['AGENT_GESTION', 'AGENT_RECETTE']}><NotificationsAgentPage /></AvecLayout>} />
+        <Route
+  path="/agent/simulateur"
+  element={
+    <AvecLayout roles={['AGENT_GESTION', 'RESPONSABLE', 'ADMIN']}>
+      <SimulateurFiscalPage />
+    </AvecLayout>
+  }
+/>
 
         {/* Responsable */}
         <Route path="/responsable/dashboard" element={<AvecLayout roles={['RESPONSABLE', 'ADMIN']}><DashboardPage /></AvecLayout>} />

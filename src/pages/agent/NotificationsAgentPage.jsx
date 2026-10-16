@@ -2,6 +2,9 @@ import { useState } from 'react';
 import notificationService from '../../services/notificationService';
 import { useApiData } from '../../hooks/useApiData';
 import { formatDate } from '../../utils/formatUtils';
+import { useListView } from '../../hooks/useApiData';
+import { ListToolbar } from '../../components/common/DataTable';
+import Pagination from '../../components/common/Pagination';
 
 export default function NotificationsAgentPage() {
   const [message, setMessage] = useState('');
@@ -9,6 +12,7 @@ export default function NotificationsAgentPage() {
     () => notificationService.lister(),
     []
   );
+  const liste = useListView(notifications || []);
 
   const genererRappels = async () => {
     try {
@@ -52,8 +56,10 @@ export default function NotificationsAgentPage() {
       {chargement ? (
         <div className="bg-white rounded-xl shadow-sm p-8 text-center text-slate-500">Chargement...</div>
       ) : (
+        <>
+        <div className="mb-4"><ListToolbar value={liste.query} onChange={liste.setQuery} placeholder="Rechercher par NIF, type, canal ou statut…" count={liste.filteredCount} /></div>
         <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-          <table className="w-full">
+          <div className="overflow-x-auto"><table className="w-full min-w-[700px]">
             <thead className="bg-slate-100 text-slate-600 text-sm">
               <tr>
                 <th className="text-left px-4 py-3">NIF</th>
@@ -64,7 +70,7 @@ export default function NotificationsAgentPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {notifications.map((n) => (
+              {liste.items.map((n) => (
                 <tr key={n.idNotif} className="hover:bg-slate-50">
                   <td className="px-4 py-3 font-mono text-sm">{n.nif}</td>
                   <td className="px-4 py-3">
@@ -82,8 +88,11 @@ export default function NotificationsAgentPage() {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         </div>
+        {liste.filteredCount === 0 && <p className="mt-3 text-center text-sm text-slate-500">Aucun résultat. <button onClick={liste.clear} className="font-semibold text-primary underline">Effacer la recherche</button></p>}
+        <Pagination page={liste.page} totalPages={liste.pagination?.totalPages || 0} totalElements={liste.filteredCount} size={10} onChange={liste.setPage} />
+        </>
       )}
     </div>
   );

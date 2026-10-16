@@ -2,12 +2,16 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import obligationService from '../../services/obligationService';
+import Pagination from '../../components/common/Pagination';
+import { ListToolbar } from '../../components/common/DataTable';
+import { useListView } from '../../hooks/useApiData';
 
 export default function ObligationsPage() {
   const { utilisateur } = useAuth();
   const [obligations, setObligations] = useState([]);
   const [filtre, setFiltre] = useState('TOUS');
   const [chargement, setChargement] = useState(true);
+  const liste = useListView(obligations.filter((o) => filtre === 'TOUS' || o.statutDeclaration === filtre));
 
   useEffect(() => {
     obligationService.parContribuable(utilisateur.identifiant)
@@ -16,29 +20,26 @@ export default function ObligationsPage() {
       .finally(() => setChargement(false));
   }, [utilisateur.identifiant]);
 
-  const filtrees = filtre === 'TOUS'
-    ? obligations
-    : obligations.filter((o) => o.statutDeclaration === filtre);
-
   return (
     <div>
-      <h1 className="text-2xl font-bold text-slate-800 mb-6">Mes obligations fiscales</h1>
+      <h1 className="fiscal-page-title mb-6 text-3xl font-semibold">Mes obligations fiscales</h1>
 
-      <div className="flex gap-2 mb-6">
+      <div className="mb-5 flex flex-wrap gap-2">
         {['TOUS', 'ATTENTE', 'DEPOSE', 'RETARD'].map((f) => (
           <button key={f} onClick={() => setFiltre(f)}
             className={`px-4 py-2 rounded-lg text-sm transition ${
-              filtre === f ? 'bg-sky-500 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'
+              filtre === f ? 'bg-primary text-white' : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
             }`}>
             {f}
           </button>
         ))}
       </div>
 
-      {chargement ? <p>Chargement...</p> : (
-        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-          <table className="w-full">
-            <thead className="bg-slate-100 text-slate-600 text-sm">
+      {!chargement && <div className="mb-4"><ListToolbar value={liste.query} onChange={liste.setQuery} placeholder="Rechercher un impôt, une période ou un statut…" count={liste.filteredCount} /></div>}
+      {chargement ? <div className="fiscal-card p-8 text-sm text-slate-500">Chargement des obligations…</div> : (
+        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+          <div className="overflow-x-auto"><table className="w-full min-w-[650px]">
+            <thead className="bg-[#F3F5F8] text-slate-600 text-sm">
               <tr>
                 <th className="text-left px-4 py-3">Impot</th>
                 <th className="text-left px-4 py-3">Periode</th>
@@ -48,16 +49,16 @@ export default function ObligationsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filtrees.map((o) => (
+              {liste.items.map((o) => (
                 <tr key={o.idObligationFiscale} className="hover:bg-slate-50">
                   <td className="px-4 py-3 font-medium">{o.codeImpot}</td>
                   <td className="px-4 py-3">{o.periodeFiscale}</td>
                   <td className="px-4 py-3 text-sm">{o.dateLimiteReelle}</td>
                   <td className="px-4 py-3">
-                    <span className={`text-xs px-2 py-1 rounded ${
-                      o.statutDeclaration === 'DEPOSE' ? 'bg-green-100 text-green-700' :
-                      o.statutDeclaration === 'RETARD' ? 'bg-red-100 text-red-700' :
-                      'bg-yellow-100 text-yellow-700'
+                    <span className={`inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded-md ${
+                      o.statutDeclaration === 'DEPOSE' ? 'bg-[#2F7A4F] text-white' :
+                      o.statutDeclaration === 'RETARD' ? 'bg-[#B23A33] text-white ring-1 ring-[#B23A33] ring-offset-1' :
+                      'bg-amber-50 text-[#8A6200] border border-[#B8860B]/40'
                     }`}>
                       {o.statutDeclaration}
                     </span>
@@ -65,17 +66,19 @@ export default function ObligationsPage() {
                   <td className="px-4 py-3 text-right">
                     {o.statutDeclaration !== 'DEPOSE' && (
                       <Link to={`/contribuable/declarations/deposer/${o.idObligationFiscale}`}
-                        className="text-sky-600 hover:underline text-sm">
+                        className="text-primary hover:underline text-sm">
                         Declarer
                       </Link>
                     )}
                   </td>
                 </tr>
               ))}
+              {liste.items.length === 0 && <tr><td colSpan="5" className="px-4 py-10 text-center text-sm text-slate-500">Aucun résultat.{liste.query && <button className="ml-1 font-semibold text-primary underline" onClick={liste.clear}> Effacer la recherche</button>}</td></tr>}
             </tbody>
-          </table>
+          </table></div>
         </div>
       )}
+      {!chargement && <Pagination {...(liste.pagination || {})} pagination={undefined} page={liste.page} totalPages={liste.pagination?.totalPages || 0} totalElements={liste.filteredCount} size={10} onChange={liste.setPage} />}
     </div>
   );
 }

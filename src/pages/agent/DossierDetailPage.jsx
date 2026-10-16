@@ -37,7 +37,7 @@ export default function DossierDetailPage() {
     charger();
   }, [nif]);
 
-  if (chargement) return <p>Chargement...</p>;
+  if (chargement) return <p>Chargement.....</p>;
   if (!contribuable) return <p>Contribuable introuvable</p>;
 
   return (

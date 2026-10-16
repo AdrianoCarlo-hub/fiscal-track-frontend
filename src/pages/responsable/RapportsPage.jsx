@@ -1,9 +1,13 @@
 import { useEffect, useState } from 'react';
 import dashboardService from '../../services/dashboardService';
+import { useListView } from '../../hooks/useApiData';
+import { ListToolbar } from '../../components/common/DataTable';
+import Pagination from '../../components/common/Pagination';
 
 export default function RapportsPage() {
   const [top10, setTop10] = useState([]);
   const [chargement, setChargement] = useState(true);
+  const liste = useListView(top10);
 
   useEffect(() => {
     dashboardService.top10Restes()
@@ -39,10 +43,13 @@ export default function RapportsPage() {
       </div>
 
       {chargement ? <p>Chargement...</p> : (
+        <>
+        <div className="mb-4"><ListToolbar value={liste.query} onChange={liste.setQuery} placeholder="Rechercher par NIF ou montant…" count={liste.filteredCount} /></div>
         <div className="bg-white p-6 rounded-xl shadow-sm">
-          <h2 className="font-bold text-slate-800 mb-4">Top 10 restes a recouvrer</h2>
+          <h2 className="font-serif text-xl font-semibold text-primary mb-1">Plus importants restes à recouvrer</h2>
+          <p className="mb-4 text-sm text-slate-500">Montants exprimés en Ariary · résultats fournis par le rapport</p>
           <ul className="space-y-2">
-            {top10.map((c) => (
+            {liste.items.map((c) => (
               <li key={c.idCompte} className="flex justify-between py-2 border-b border-slate-100">
                 <span className="font-mono text-sm">{c.nif}</span>
                 <span className="font-bold text-red-600">{formatMontant(c.resteARecouvrer)}</span>
@@ -50,6 +57,9 @@ export default function RapportsPage() {
             ))}
           </ul>
         </div>
+        {liste.filteredCount === 0 && <p className="mt-3 text-center text-sm text-slate-500">Aucun résultat. <button onClick={liste.clear} className="font-semibold text-primary underline">Effacer la recherche</button></p>}
+        <Pagination page={liste.page} totalPages={liste.pagination?.totalPages || 0} totalElements={liste.filteredCount} size={10} onChange={liste.setPage} />
+        </>
       )}
     </div>
   );

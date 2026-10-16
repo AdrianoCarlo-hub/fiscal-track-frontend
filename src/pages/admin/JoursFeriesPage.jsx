@@ -1,11 +1,15 @@
 import { useEffect, useState } from 'react';
 import adminService from '../../services/adminService';
+import { useListView } from '../../hooks/useApiData';
+import { ListToolbar } from '../../components/common/DataTable';
+import Pagination from '../../components/common/Pagination';
 
 export default function JoursFeriesPage() {
   const [jours, setJours] = useState([]);
   const [chargement, setChargement] = useState(true);
   const [form, setForm] = useState({ dateFerie: '', description: '' });
   const [erreur, setErreur] = useState('');
+  const liste = useListView(jours);
 
   const charger = async () => {
     setChargement(true);
@@ -45,7 +49,7 @@ export default function JoursFeriesPage() {
     <div>
       <h1 className="text-2xl font-bold text-slate-800 mb-6">Jours feries</h1>
 
-      <form onSubmit={ajouter} className="bg-white p-4 rounded-xl shadow-sm mb-6 flex gap-3 items-end">
+      <form onSubmit={ajouter} className="fiscal-card mb-6 flex flex-col items-stretch gap-3 p-4 sm:flex-row sm:items-end">
         <div>
           <label className="block text-sm mb-1">Date</label>
           <input type="date" required value={form.dateFerie}
@@ -67,8 +71,10 @@ export default function JoursFeriesPage() {
       {erreur && <div className="bg-red-50 text-red-700 p-4 rounded-lg">{erreur}</div>}
 
       {!chargement && !erreur && (
+        <>
+        <div className="mb-4"><ListToolbar value={liste.query} onChange={liste.setQuery} placeholder="Rechercher une date ou une description…" count={liste.filteredCount} /></div>
         <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-          <table className="w-full">
+          <div className="overflow-x-auto"><table className="w-full min-w-[520px]">
             <thead className="bg-slate-100 text-slate-600 text-sm">
               <tr>
                 <th className="text-left px-4 py-3">Date</th>
@@ -77,7 +83,7 @@ export default function JoursFeriesPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {jours.map((j) => (
+              {liste.items.map((j) => (
                 <tr key={j.idJourFerie} className="hover:bg-slate-50">
                   <td className="px-4 py-3 font-mono text-sm">{j.dateFerie}</td>
                   <td className="px-4 py-3">{j.description}</td>
@@ -88,8 +94,11 @@ export default function JoursFeriesPage() {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         </div>
+        {liste.items.length === 0 && <p className="mt-3 text-center text-sm text-slate-500">Aucun résultat. <button onClick={liste.clear} className="font-semibold text-primary underline">Effacer la recherche</button></p>}
+        <Pagination page={liste.page} totalPages={liste.pagination?.totalPages || 0} totalElements={liste.filteredCount} size={10} onChange={liste.setPage} />
+        </>
       )}
     </div>
   );

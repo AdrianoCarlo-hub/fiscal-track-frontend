@@ -1,9 +1,13 @@
 import { useEffect, useState } from 'react';
 import compteCourantService from '../../services/compteCourantService';
+import { useListView } from '../../hooks/useApiData';
+import { ListToolbar } from '../../components/common/DataTable';
+import Pagination from '../../components/common/Pagination';
 
 export default function DettesAgentPage() {
   const [comptes, setComptes] = useState([]);
   const [chargement, setChargement] = useState(true);
+  const liste = useListView(comptes);
 
   useEffect(() => {
     compteCourantService.nonSoldes()
@@ -22,15 +26,17 @@ export default function DettesAgentPage() {
     <div>
       <h1 className="text-2xl font-bold text-slate-800 mb-6">Suivi des dettes</h1>
 
-      <div className="bg-red-500 text-white p-6 rounded-xl shadow-sm mb-6">
-        <p className="text-sm uppercase text-red-100">Total a recouvrer</p>
-        <p className="text-3xl font-bold mt-2">{formatMontant(total)}</p>
-        <p className="text-sm mt-1">{comptes.length} compte(s) non solde(s)</p>
+      <div className="mb-6 rounded-xl border-l-4 border-danger bg-white p-6 shadow-sm">
+        <p className="text-sm text-slate-500">Total à recouvrer</p>
+        <p className="fiscal-money mt-2 text-3xl font-semibold text-danger">{formatMontant(total)}</p>
+        <p className="mt-1 text-sm text-slate-500">{comptes.length} compte(s) non soldé(s)</p>
       </div>
 
-      {chargement ? <p>Chargement...</p> : (
+      {chargement ? <div className="fiscal-card p-8 text-sm text-slate-500">Chargement des dettes…</div> : (
+        <>
+        <div className="mb-4"><ListToolbar value={liste.query} onChange={liste.setQuery} placeholder="Rechercher par compte, NIF ou statut…" count={liste.filteredCount} /></div>
         <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-          <table className="w-full">
+          <div className="overflow-x-auto"><table className="w-full min-w-[680px]">
             <thead className="bg-slate-100 text-slate-600 text-sm">
               <tr>
                 <th className="text-left px-4 py-3">Compte</th>
@@ -41,7 +47,7 @@ export default function DettesAgentPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {comptes.map((c) => (
+              {liste.items.map((c) => (
                 <tr key={c.idCompte} className="hover:bg-slate-50">
                   <td className="px-4 py-3">#{c.idCompte}</td>
                   <td className="px-4 py-3 font-mono text-sm">{c.nif}</td>
@@ -57,8 +63,11 @@ export default function DettesAgentPage() {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         </div>
+        {liste.items.length === 0 && <p className="mt-3 text-center text-sm text-slate-500">Aucun résultat. <button onClick={liste.clear} className="font-semibold text-primary underline">Effacer la recherche</button></p>}
+        <Pagination page={liste.page} totalPages={liste.pagination?.totalPages || 0} totalElements={liste.filteredCount} size={10} onChange={liste.setPage} />
+        </>
       )}
     </div>
   );

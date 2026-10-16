@@ -24,35 +24,35 @@ export default function Pagination({ page, totalPages, totalElements, size, onCh
   };
 
   return (
-    <div className="flex items-center justify-between px-4 py-3 border-t border-slate-200 bg-white">
+    <div className="flex flex-col gap-3 border-t border-slate-200 bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
       <div className="text-sm text-slate-600">
         {premiereLigne}-{derniereLigne} sur {totalElements}
       </div>
 
-      <div className="flex items-center gap-1">
+      <div className="flex flex-wrap items-center gap-1">
         <button
           onClick={() => onChange(0)}
           disabled={page === 0}
-          className="px-2 py-1 text-sm border border-slate-300 rounded hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
+          className="rounded-lg border border-slate-300 px-2 py-1.5 text-sm text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
         >
           «
         </button>
         <button
           onClick={() => onChange(page - 1)}
           disabled={page === 0}
-          className="px-3 py-1 text-sm border border-slate-300 rounded hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
+          className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
         >
-          Precedent
+          Précédent
         </button>
 
         {pagesVisibles().map((p) => (
           <button
             key={p}
             onClick={() => onChange(p)}
-            className={`px-3 py-1 text-sm border rounded ${
+            className={`min-w-9 rounded-lg border px-3 py-1.5 text-sm transition ${
               p === page
-                ? 'bg-sky-500 text-white border-sky-500'
-                : 'border-slate-300 hover:bg-slate-50'
+                ? 'border-primary bg-primary text-white'
+                : 'border-slate-300 text-slate-600 hover:bg-slate-50'
             }`}
           >
             {p + 1}
@@ -62,14 +62,14 @@ export default function Pagination({ page, totalPages, totalElements, size, onCh
         <button
           onClick={() => onChange(page + 1)}
           disabled={page >= totalPages - 1}
-          className="px-3 py-1 text-sm border border-slate-300 rounded hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
+          className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
         >
           Suivant
         </button>
         <button
           onClick={() => onChange(totalPages - 1)}
           disabled={page >= totalPages - 1}
-          className="px-2 py-1 text-sm border border-slate-300 rounded hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
+          className="rounded-lg border border-slate-300 px-2 py-1.5 text-sm text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
         >
           »
         </button>

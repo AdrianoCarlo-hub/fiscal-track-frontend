@@ -1,69 +1,65 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { FileSearch } from 'lucide-react';
 import contribuableService from '../../services/contribuableService';
-import DataTable from '../../components/common/DataTable';
+import DataTable, { ListToolbar } from '../../components/common/DataTable';
 import { useApiData } from '../../hooks/useApiData';
+import StatusBadge from '../../components/ui/StatusBadge';
 
 export default function DossiersPage() {
   const [page, setPage] = useState(0);
   const [recherche, setRecherche] = useState('');
 
-  const { data, chargement, erreur, recharger } = useApiData(
-    () => contribuableService.listerPagine(page, 5),
-    [page]
+  const { data, chargement, erreur } = useApiData(
+    () => recherche.trim() ? contribuableService.rechercherPagine(recherche.trim(), page, 5) : contribuableService.listerPagine(page, 5),
+    [page, recherche]
   );
 
   const colonnes = [
-    { cle: 'nif', label: 'NIF', render: (c) => <span className="font-mono text-sm">{c.nif}</span> },
+    { cle: 'nif', label: 'NIF', render: (c) => <span className="font-mono text-sm font-semibold">{c.nif}</span> },
     { cle: 'raisonSociale', label: 'Raison sociale' },
     { cle: 'formeJuridique', label: 'Forme' },
-    { cle: 'regimeImposition', label: 'Regime' },
+    { cle: 'regimeImposition', label: 'Régime' },
     {
       cle: 'statutActivite',
       label: 'Statut',
-      render: (c) => (
-        <span className={`text-xs px-2 py-1 rounded ${
-          c.statutActivite === 'ACTIF' ? 'bg-green-100 text-green-700' :
-          c.statutActivite === 'VEILLEUSE' ? 'bg-yellow-100 text-yellow-700' :
-          'bg-slate-100 text-slate-700'
-        }`}>
-          {c.statutActivite}
-        </span>
-      ),
+      render: (c) => {
+        const variant = c.statutActivite === 'ACTIF' ? 'success' : c.statutActivite === 'VEILLEUSE' ? 'warning' : 'default';
+        return <StatusBadge variant={variant}>{c.statutActivite}</StatusBadge>;
+      },
     },
     {
       cle: 'action',
       label: 'Action',
       align: 'right',
       render: (c) => (
-        <Link to={`/agent/dossiers/${c.nif}`} className="text-sky-600 hover:underline text-sm">
+        <Link to={`/agent/dossiers/${c.nif}`} className="inline-flex items-center rounded-lg bg-primary/10 px-3 py-1.5 text-sm font-medium text-primary transition hover:bg-primary/15">
           Voir
         </Link>
       ),
     },
   ];
 
-  const donneesAffichees = recherche
-    ? (data?.content || []).filter((c) =>
-        c.nif.toLowerCase().includes(recherche.toLowerCase()) ||
-        c.raisonSociale.toLowerCase().includes(recherche.toLowerCase()))
-    : data?.content;
+  const modifierRecherche = (value) => { setRecherche(value); setPage(0); };
 
   return (
-    <div>
-      <h1 className="text-2xl font-bold text-slate-800 mb-6">Dossiers contribuables</h1>
+    <div className="space-y-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Administration</p>
+          <h1 className="mt-2 text-3xl font-bold text-slate-800">Dossiers contribuables</h1>
+        </div>
+        <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-3 py-2 text-sm font-medium text-primary">
+          <FileSearch className="h-4 w-4" />
+          {data?.totalElements ?? 0} dossiers
+        </div>
+      </div>
 
-      <input
-        type="text"
-        placeholder="Rechercher par NIF ou raison sociale..."
-        value={recherche}
-        onChange={(e) => setRecherche(e.target.value)}
-        className="w-full max-w-md px-4 py-2 border border-slate-300 rounded-lg mb-6 focus:ring-2 focus:ring-sky-500 outline-none"
-      />
+      <div className="fiscal-card p-4"><ListToolbar value={recherche} onChange={modifierRecherche} placeholder="Rechercher par NIF ou raison sociale…" count={data?.totalElements ?? 0} /></div>
 
       <DataTable
         colonnes={colonnes}
-        donnees={donneesAffichees}
+        donnees={data?.content || []}
         chargement={chargement}
         erreur={erreur}
         pagination={data ? {
@@ -73,6 +69,8 @@ export default function DossiersPage() {
           size: data.size,
         } : null}
         onPageChange={(p) => setPage(p)}
+        rechercheActive={Boolean(recherche)}
+        onEffacerRecherche={() => modifierRecherche('')}
       />
     </div>
   );

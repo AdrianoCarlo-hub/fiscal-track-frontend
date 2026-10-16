@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 
 /**
  * Hook generique pour charger des donnees depuis une API.
@@ -36,3 +36,30 @@ export function useApiData(fetchFn, dependances = []) {
 }
 
 export default useApiData;
+
+// Filtre et pagine côté client les listes déjà chargées en entier.
+export function useListView(data = [], pageSize = 10) {
+  const [query, setQuery] = useState('');
+  const [page, setPage] = useState(0);
+  const filtered = useMemo(() => {
+    const needle = query.trim().toLocaleLowerCase('fr');
+    return needle ? data.filter((item) => JSON.stringify(item ?? {}).toLocaleLowerCase('fr').includes(needle)) : data;
+  }, [data, query]);
+  const totalPages = Math.ceil(filtered.length / pageSize);
+  const safePage = Math.min(page, Math.max(0, totalPages - 1));
+  const clear = () => {
+    setQuery('');
+    setPage(0);
+  };
+
+  return {
+    query,
+    setQuery: (value) => { setQuery(value); setPage(0); },
+    clear,
+    page: safePage,
+    setPage,
+    items: filtered.slice(safePage * pageSize, (safePage + 1) * pageSize),
+    filteredCount: filtered.length,
+    pagination: totalPages > 1 ? { page: safePage, totalPages, totalElements: filtered.length, size: pageSize } : null,
+  };
+}

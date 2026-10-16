@@ -1,10 +1,14 @@
 import { useEffect, useState } from 'react';
 import declarationService from '../../services/declarationService';
+import { useListView } from '../../hooks/useApiData';
+import { ListToolbar } from '../../components/common/DataTable';
+import Pagination from '../../components/common/Pagination';
 
 export default function DeclarationsAgentPage() {
   const [declarations, setDeclarations] = useState([]);
   const [filtre, setFiltre] = useState('EN_ATTENTE_VALIDATION');
   const [chargement, setChargement] = useState(true);
+  const liste = useListView(declarations.filter((d) => d.statutValidation === filtre));
 
   const charger = async () => {
     setChargement(true);
@@ -39,8 +43,6 @@ export default function DeclarationsAgentPage() {
     }
   };
 
-  const filtrees = declarations.filter((d) => d.statutValidation === filtre);
-
   return (
     <div>
       <h1 className="text-2xl font-bold text-slate-800 mb-6">Instruction des declarations</h1>
@@ -56,13 +58,14 @@ export default function DeclarationsAgentPage() {
         ))}
       </div>
 
-      {chargement ? <p>Chargement...</p> : filtrees.length === 0 ? (
-        <div className="bg-white p-8 rounded-xl shadow-sm text-center text-slate-500">
-          Aucune declaration dans cette categorie
+      {!chargement && <div className="mb-4"><ListToolbar value={liste.query} onChange={liste.setQuery} placeholder="Rechercher par déclaration, obligation ou date…" count={liste.filteredCount} /></div>}
+      {chargement ? <div className="fiscal-card p-8 text-sm text-slate-500">Chargement des déclarations…</div> : liste.filteredCount === 0 ? (
+        <div className="fiscal-card p-8 text-center text-sm text-slate-500">
+          {liste.query ? <>Aucun résultat pour cette recherche. <button onClick={liste.clear} className="font-semibold text-primary underline">Effacer la recherche</button></> : 'Aucune déclaration dans cette catégorie.'}
         </div>
       ) : (
         <div className="space-y-3">
-          {filtrees.map((d) => (
+          {liste.items.map((d) => (
             <div key={d.idDeclaration} className="bg-white p-5 rounded-xl shadow-sm">
               <div className="flex justify-between items-start">
                 <div>
@@ -103,6 +106,7 @@ export default function DeclarationsAgentPage() {
           ))}
         </div>
       )}
+      {!chargement && liste.filteredCount > 0 && <Pagination page={liste.page} totalPages={liste.pagination?.totalPages || 0} totalElements={liste.filteredCount} size={10} onChange={liste.setPage} />}
     </div>
   );
 }

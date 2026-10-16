@@ -1,6 +1,6 @@
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
 
-const COLORS = ['#22c55e', '#eab308', '#ef4444'];
+const COLORS = ['#2F7A4F', '#B8860B', '#B23A33'];
 
 export default function ConformiteChart({ data }) {
   const chartData = [
@@ -8,6 +8,10 @@ export default function ConformiteChart({ data }) {
     { name: 'En attente', value: data.obligationsEnAttente },
     { name: 'En retard', value: data.obligationsEnRetard },
   ];
+
+  if (chartData.every((entry) => !Number(entry.value))) {
+    return <div className="flex h-[260px] items-center justify-center text-sm text-slate-500">Aucune donnée d’obligation à afficher.</div>;
+  }
 
   return (
     <ResponsiveContainer width="100%" height={300}>
@@ -17,7 +21,7 @@ export default function ConformiteChart({ data }) {
             <Cell key={index} fill={COLORS[index]} />
           ))}
         </Pie>
-        <Tooltip />
+        <Tooltip formatter={(value) => [`${value} obligation(s)`, 'Nombre']} />
         <Legend />
       </PieChart>
     </ResponsiveContainer>

@@ -3,6 +3,9 @@ import paiementService from '../../services/paiementService';
 import { useApiData } from '../../hooks/useApiData';
 import { formatMontant, formatDate } from '../../utils/formatUtils';
 import PaiementForm from '../../components/forms/PaiementForm';
+import { useListView } from '../../hooks/useApiData';
+import { ListToolbar } from '../../components/common/DataTable';
+import Pagination from '../../components/common/Pagination';
 
 export default function PaiementsAgentPage() {
   const [modalOuvert, setModalOuvert] = useState(false);
@@ -10,6 +13,7 @@ export default function PaiementsAgentPage() {
     () => paiementService.lister(),
     []
   );
+  const liste = useListView(paiements || []);
 
   return (
     <div>
@@ -37,8 +41,10 @@ export default function PaiementsAgentPage() {
       {erreur && <div className="bg-red-50 text-red-700 p-4 rounded-lg">{erreur}</div>}
 
       {!chargement && !erreur && paiements && (
+        <>
+        <div className="mb-4"><ListToolbar value={liste.query} onChange={liste.setQuery} placeholder="Rechercher un paiement, compte ou référence…" count={liste.filteredCount} /></div>
         <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-          <table className="w-full">
+          <div className="overflow-x-auto"><table className="w-full min-w-[720px]">
             <thead className="bg-slate-100 text-slate-600 text-sm">
               <tr>
                 <th className="text-left px-4 py-3">ID</th>
@@ -50,7 +56,7 @@ export default function PaiementsAgentPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {paiements.map((p) => (
+              {liste.items.map((p) => (
                 <tr key={p.idPaiement} className="hover:bg-slate-50">
                   <td className="px-4 py-3 font-mono text-sm">#{p.idPaiement}</td>
                   <td className="px-4 py-3">#{p.idCompte}</td>
@@ -61,8 +67,11 @@ export default function PaiementsAgentPage() {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         </div>
+        {liste.filteredCount === 0 && <p className="mt-3 text-center text-sm text-slate-500">Aucun résultat. <button onClick={liste.clear} className="font-semibold text-primary underline">Effacer la recherche</button></p>}
+        <Pagination page={liste.page} totalPages={liste.pagination?.totalPages || 0} totalElements={liste.filteredCount} size={10} onChange={liste.setPage} />
+        </>
       )}
 
       {modalOuvert && (
