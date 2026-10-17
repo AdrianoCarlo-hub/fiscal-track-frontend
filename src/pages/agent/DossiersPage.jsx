@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { FileSearch } from 'lucide-react';
 import contribuableService from '../../services/contribuableService';
@@ -9,6 +9,7 @@ import StatusBadge from '../../components/ui/StatusBadge';
 export default function DossiersPage() {
   const [page, setPage] = useState(0);
   const [recherche, setRecherche] = useState('');
+  const [modalCreationOuvert, setModalCreationOuvert] = useState(false);
 
   const { data, chargement, erreur } = useApiData(
     () => recherche.trim() ? contribuableService.rechercherPagine(recherche.trim(), page, 5) : contribuableService.listerPagine(page, 5),
@@ -19,7 +20,7 @@ export default function DossiersPage() {
     { cle: 'nif', label: 'NIF', render: (c) => <span className="font-mono text-sm font-semibold">{c.nif}</span> },
     { cle: 'raisonSociale', label: 'Raison sociale' },
     { cle: 'formeJuridique', label: 'Forme' },
-    { cle: 'regimeImposition', label: 'Régime' },
+    { cle: 'regimeImposition', label: 'RÃ©gime' },
     {
       cle: 'statutActivite',
       label: 'Statut',
@@ -49,13 +50,21 @@ export default function DossiersPage() {
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Administration</p>
           <h1 className="mt-2 text-3xl font-bold text-slate-800">Dossiers contribuables</h1>
         </div>
-        <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-3 py-2 text-sm font-medium text-primary">
-          <FileSearch className="h-4 w-4" />
-          {data?.totalElements ?? 0} dossiers
+        <div className="flex gap-2 items-center">
+          <button
+            onClick={() => setModalCreationOuvert(true)}
+            className="bg-sky-500 hover:bg-sky-600 text-white px-4 py-2 rounded-lg text-sm transition"
+          >
+            + Nouveau contribuable
+          </button>
+          <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-3 py-2 text-sm font-medium text-primary">
+            <FileSearch className="h-4 w-4" />
+            {data?.totalElements ?? 0} dossiers
+          </div>
         </div>
       </div>
 
-      <div className="fiscal-card p-4"><ListToolbar value={recherche} onChange={modifierRecherche} placeholder="Rechercher par NIF ou raison sociale…" count={data?.totalElements ?? 0} /></div>
+      <div className="fiscal-card p-4"><ListToolbar value={recherche} onChange={modifierRecherche} placeholder="Rechercher par NIF ou raison socialeâ€¦" count={data?.totalElements ?? 0} /></div>
 
       <DataTable
         colonnes={colonnes}
