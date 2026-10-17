@@ -113,14 +113,16 @@ export default function LoginPage() {
             </Button>
           </form>
 
-          <div className="mt-8 border-t border-slate-200 pt-5 text-xs text-slate-500">
-            <p className="mb-2 font-semibold uppercase tracking-[0.12em] text-slate-500">Comptes de test</p>
-            <ul className="space-y-1">
-              <li>NIF0000001 / password123</li>
-              <li>rakoto.jean@impots.mg</li>
-              <li>andry.lova@impots.mg</li>
-            </ul>
-          </div>
+          {import.meta.env.DEV && (
+            <div className="mt-8 border-t border-slate-200 pt-5 text-xs text-slate-500">
+              <p className="mb-2 font-semibold uppercase tracking-[0.12em] text-slate-500">Comptes de test</p>
+              <ul className="space-y-1">
+                <li>NIF0000001 / password123</li>
+                <li>rakoto.jean@impots.mg</li>
+                <li>andry.lova@impots.mg</li>
+              </ul>
+            </div>
+          )}
         </div>
       </div>
     </div>
