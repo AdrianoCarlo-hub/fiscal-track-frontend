@@ -69,6 +69,18 @@ export default function ResultatCalculCard({ resultat }) {
         </div>
       </div>
 
+      {/* Avertissements (seuil TVA, regime, etc.) */}
+      {resultat.avertissements && resultat.avertissements.length > 0 && (
+        <div className="px-6 py-4 border-t border-slate-200 bg-amber-50">
+          <h3 className="font-bold text-amber-800 mb-3">Avertissements</h3>
+          <ul className="space-y-1 text-sm text-amber-700 list-disc list-inside">
+            {resultat.avertissements.map((av, idx) => (
+              <li key={idx} className="py-1">{av}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {/* Etapes du calcul */}
       {resultat.etapesCalcul && resultat.etapesCalcul.length > 0 && (
         <div className="px-6 py-4 border-t border-slate-200 bg-slate-50">

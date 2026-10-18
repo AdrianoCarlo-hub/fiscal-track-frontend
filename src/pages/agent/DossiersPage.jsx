@@ -5,22 +5,26 @@ import contribuableService from '../../services/contribuableService';
 import DataTable, { ListToolbar } from '../../components/common/DataTable';
 import { useApiData } from '../../hooks/useApiData';
 import StatusBadge from '../../components/ui/StatusBadge';
+import Toast from '../../components/ui/Toast';
+import NouveauContribuableModal from '../../components/common/NouveauContribuableModal';
 
 export default function DossiersPage() {
   const [page, setPage] = useState(0);
   const [recherche, setRecherche] = useState('');
   const [modalCreationOuvert, setModalCreationOuvert] = useState(false);
+  const [rafraichir, setRafraichir] = useState(0);
+  const [toast, setToast] = useState(null);
 
   const { data, chargement, erreur } = useApiData(
     () => recherche.trim() ? contribuableService.rechercherPagine(recherche.trim(), page, 5) : contribuableService.listerPagine(page, 5),
-    [page, recherche]
+    [page, recherche, rafraichir]
   );
 
   const colonnes = [
     { cle: 'nif', label: 'NIF', render: (c) => <span className="font-mono text-sm font-semibold">{c.nif}</span> },
     { cle: 'raisonSociale', label: 'Raison sociale' },
     { cle: 'formeJuridique', label: 'Forme' },
-    { cle: 'regimeImposition', label: 'RÃ©gime' },
+    { cle: 'regimeImposition', label: 'Regime' },
     {
       cle: 'statutActivite',
       label: 'Statut',
@@ -43,8 +47,20 @@ export default function DossiersPage() {
 
   const modifierRecherche = (value) => { setRecherche(value); setPage(0); };
 
+  const handleCreation = () => {
+    setModalCreationOuvert(false);
+    setRafraichir((n) => n + 1);
+    setToast({ title: 'Contribuable cree', message: 'Le nouveau dossier a bien ete enregistre.' });
+    setTimeout(() => setToast(null), 4000);
+  };
+
   return (
     <div className="space-y-6">
+      {toast && (
+        <div className="fixed right-4 top-4 z-[60]">
+          <Toast title={toast.title} message={toast.message} variant="success" onClose={() => setToast(null)} />
+        </div>
+      )}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Administration</p>
@@ -64,7 +80,7 @@ export default function DossiersPage() {
         </div>
       </div>
 
-      <div className="fiscal-card p-4"><ListToolbar value={recherche} onChange={modifierRecherche} placeholder="Rechercher par NIF ou raison socialeâ€¦" count={data?.totalElements ?? 0} /></div>
+      <div className="fiscal-card p-4"><ListToolbar value={recherche} onChange={modifierRecherche} placeholder="Rechercher par NIF ou raison sociale..." count={data?.totalElements ?? 0} /></div>
 
       <DataTable
         colonnes={colonnes}
@@ -80,6 +96,12 @@ export default function DossiersPage() {
         onPageChange={(p) => setPage(p)}
         rechercheActive={Boolean(recherche)}
         onEffacerRecherche={() => modifierRecherche('')}
+      />
+
+      <NouveauContribuableModal
+        isOpen={modalCreationOuvert}
+        onClose={() => setModalCreationOuvert(false)}
+        onSuccess={handleCreation}
       />
     </div>
   );

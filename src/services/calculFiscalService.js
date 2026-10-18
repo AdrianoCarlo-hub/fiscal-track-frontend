@@ -24,6 +24,24 @@ const calculFiscalService = {
    */
   calculerTva: async (data) =>
     (await api.post('/api/calculs/tva', data)).data,
+
+  /**
+   * Simule un calcul IMP (marches publics).
+   */
+  calculerImp: async (data) =>
+    (await api.post('/api/calculs/imp', data)).data,
+
+  /**
+   * Simule un calcul IPVI (plus-values immobilieres).
+   */
+  calculerIpvi: async (data) =>
+    (await api.post('/api/calculs/ipvi', data)).data,
+
+  /**
+   * Simule un calcul IRCM (revenus des capitaux mobiliers).
+   */
+  calculerIrcm: async (data) =>
+    (await api.post('/api/calculs/ircm', data)).data,
 };
 
 export default calculFiscalService;

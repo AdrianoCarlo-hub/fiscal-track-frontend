@@ -1,9 +1,12 @@
 import { useState } from 'react';
-import { Calculator, ChartColumnBig, CircleDollarSign, Landmark, ReceiptText } from 'lucide-react';
+import { Calculator, ChartColumnBig, CircleDollarSign, Landmark, ReceiptText, Gavel, Building2, Coins } from 'lucide-react';
 import CalculIrForm from '../../components/forms/CalculIrForm';
 import CalculIsForm from '../../components/forms/CalculIsForm';
 import CalculIrsaForm from '../../components/forms/CalculIrsaForm';
 import CalculTvaForm from '../../components/forms/CalculTvaForm';
+import CalculImpForm from '../../components/forms/CalculImpForm';
+import CalculIpviForm from '../../components/forms/CalculIpviForm';
+import CalculIrcmForm from '../../components/forms/CalculIrcmForm';
 import ResultatCalculCard from '../../components/common/ResultatCalculCard';
 
 const ONGLETS = [
@@ -11,6 +14,9 @@ const ONGLETS = [
   { code: 'IS', label: 'IS', description: 'Impôt synthétique', icon: ChartColumnBig },
   { code: 'IRSA', label: 'IRSA', description: 'Revenus salariaux', icon: ReceiptText },
   { code: 'TVA', label: 'TVA', description: 'Taxe sur la valeur ajoutée', icon: Landmark },
+  { code: 'IMP', label: 'IMP', description: 'Impôt sur les marchés publics', icon: Gavel },
+  { code: 'IPVI', label: 'IPVI', description: 'Plus-values immobilières', icon: Building2 },
+  { code: 'IRCM', label: 'IRCM', description: 'Revenus des capitaux mobiliers', icon: Coins },
 ];
 
 export default function SimulateurFiscalPage() {
@@ -83,6 +89,9 @@ export default function SimulateurFiscalPage() {
           {ongletActif === 'IS' && <CalculIsForm onResultat={handleResultat} onErreur={handleErreur} />}
           {ongletActif === 'IRSA' && <CalculIrsaForm onResultat={handleResultat} onErreur={handleErreur} />}
           {ongletActif === 'TVA' && <CalculTvaForm onResultat={handleResultat} onErreur={handleErreur} />}
+          {ongletActif === 'IMP' && <CalculImpForm onResultat={handleResultat} onErreur={handleErreur} />}
+          {ongletActif === 'IPVI' && <CalculIpviForm onResultat={handleResultat} onErreur={handleErreur} />}
+          {ongletActif === 'IRCM' && <CalculIrcmForm onResultat={handleResultat} onErreur={handleErreur} />}
         </div>
 
         <div>

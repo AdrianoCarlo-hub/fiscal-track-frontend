@@ -1,4 +1,5 @@
 import Pagination from './Pagination';
+import EmptyState from '../ui/EmptyState';
 import { Search, X } from 'lucide-react';
 
 export function ListToolbar({ value, onChange, placeholder = 'Rechercher dans la liste…', count }) {
@@ -56,11 +57,15 @@ export default function DataTable({
 
   if (!donnees || donnees.length === 0) {
     return (
-      <div className="fiscal-card flex flex-col items-center p-8 text-center text-sm text-slate-500">
-        <span className="mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-primary"><Search className="h-4 w-4" /></span>
-        <strong className="font-semibold text-primary">{rechercheActive ? 'Aucun résultat' : 'Aucune donnée'}</strong>
-        <span className="mt-1">{rechercheActive ? 'Aucune ligne ne correspond à cette recherche.' : 'Aucune donnée à afficher pour le moment.'}</span>
-        {rechercheActive && onEffacerRecherche && <button onClick={onEffacerRecherche} className="mt-3 font-semibold text-primary underline">Effacer la recherche</button>}
+      <div className="fiscal-card p-4">
+        <EmptyState
+          icon={Search}
+          title={rechercheActive ? 'Aucun résultat' : 'Aucune donnée'}
+          description={rechercheActive ? 'Aucune ligne ne correspond à cette recherche.' : 'Aucune donnée à afficher pour le moment.'}
+          action={rechercheActive && onEffacerRecherche ? (
+            <button onClick={onEffacerRecherche} className="font-semibold text-primary underline">Effacer la recherche</button>
+          ) : null}
+        />
       </div>
     );
   }

@@ -25,11 +25,20 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    const status = error.response?.status;
+    if (status === 401) {
       localStorage.removeItem('token');
       localStorage.removeItem('utilisateur');
       if (window.location.pathname !== '/login') {
         window.location.href = '/login';
+      }
+    }
+    if (status === 403) {
+      // Acces refuse (role insuffisant) : on ne deconnecte PAS, on affiche un
+      // message clair sur l'erreur pour que l'utilisateur puisse revenir.
+      if (!error.response.data || !error.response.data.message) {
+        error.response = error.response || {};
+        error.response.data = { message: "Acces refuse : votre role ne permet pas cette action." };
       }
     }
     return Promise.reject(error);
