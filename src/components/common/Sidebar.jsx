@@ -5,7 +5,7 @@ import {
   CheckCircle2, ChevronLeft, ChevronRight, ClipboardList, CreditCard, FileBarChart,
   FileText, Folder, LayoutDashboard, LogOut, Settings, TrendingUp, UserCog, Users, Wallet, X,
 } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../context/useAuth';
 
 const GROUPS = {
   CONTRIBUABLE: [{ title: 'Espace contribuable', items: [

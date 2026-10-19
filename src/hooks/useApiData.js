@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 
 /**
  * Hook generique pour charger des donnees depuis une API.
@@ -15,22 +15,35 @@ export function useApiData(fetchFn, dependances = []) {
   const [chargement, setChargement] = useState(true);
   const [erreur, setErreur] = useState('');
 
+  // La fonction fournie par le parent est souvent recrée à chaque rendu :
+  // on la conserve dans une ref pour éviter de recharger sans fin.
+  const fetchRef = useRef(fetchFn);
+  useEffect(() => {
+    fetchRef.current = fetchFn;
+  });
+
   const charger = useCallback(async () => {
     setChargement(true);
     setErreur('');
     try {
-      const resultat = await fetchFn();
+      const resultat = await fetchRef.current();
       setData(resultat);
     } catch (err) {
       setErreur(err.response?.data?.message || 'Erreur de chargement');
     } finally {
       setChargement(false);
     }
-  }, dependances);
+  }, []);
+
+  // Cle stable des dépendances du hook (valeurs sérialisables).
+  const cle = JSON.stringify(dependances);
 
   useEffect(() => {
-    charger();
-  }, [charger]);
+    // Le corps d'un effet ne doit pas appeler setState de facon synchrone :
+    // le chargement demarre dans un microtask (le rendu initial affiche deja
+    // l'etat "chargement" tant que les donnees sont absentes).
+    Promise.resolve().then(charger);
+  }, [charger, cle]);
 
   return { data, chargement, erreur, recharger: charger };
 }

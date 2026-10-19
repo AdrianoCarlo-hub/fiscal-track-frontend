@@ -26,7 +26,9 @@ export default function TypesImpotsPage() {
     }
   };
 
-  useEffect(() => { charger(); }, []);
+  useEffect(() => {
+    Promise.resolve().then(charger);
+  }, []);
 
   return (
     <div>

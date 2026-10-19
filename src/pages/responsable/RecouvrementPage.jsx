@@ -3,6 +3,7 @@ import compteCourantService from '../../services/compteCourantService';
 import { useListView } from '../../hooks/useApiData';
 import { ListToolbar } from '../../components/common/DataTable';
 import Pagination from '../../components/common/Pagination';
+import { libelleStatutRecouvrement } from '../../utils/formatUtils';
 
 export default function RecouvrementPage() {
   const [comptes, setComptes] = useState([]);
@@ -48,7 +49,7 @@ export default function RecouvrementPage() {
                   <td className="px-4 py-3 text-right font-bold text-red-600">{formatMontant(c.resteARecouvrer)}</td>
                   <td className="px-4 py-3">
                     <span className="bg-orange-100 text-orange-700 text-xs px-2 py-1 rounded">
-                      {c.statutRecouvrement}
+                      {libelleStatutRecouvrement(c.statutRecouvrement)}
                     </span>
                   </td>
                 </tr>

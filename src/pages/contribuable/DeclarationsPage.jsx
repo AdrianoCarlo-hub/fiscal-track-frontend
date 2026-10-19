@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { FileText, ShieldCheck } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../context/useAuth';
 import obligationService from '../../services/obligationService';
 import declarationService from '../../services/declarationService';
 import StatusBadge from '../../components/ui/StatusBadge';
@@ -92,8 +92,12 @@ export default function DeclarationsPage() {
                               : 'warning'
                         }
                       >
-                        {d.statutValidation}
+                        {d.statutValidation === 'VALIDEE' ? 'Validée'
+                          : d.statutValidation === 'REJETEE' ? 'Rejetée' : 'En attente'}
                       </StatusBadge>
+                      {d.statutValidation === 'REJETEE' && d.motifRejet && (
+                        <p className="mt-1 max-w-xs text-xs text-red-600">{d.motifRejet}</p>
+                      )}
                     </td>
                   </tr>
                 ))}

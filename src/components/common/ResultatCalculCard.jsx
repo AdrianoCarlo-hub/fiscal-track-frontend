@@ -8,7 +8,6 @@ export default function ResultatCalculCard({ resultat }) {
   if (!resultat) return null;
 
   const hasCredit = resultat.creditFiscal && Number(resultat.creditFiscal) > 0;
-  const hasSolde = resultat.solde && Number(resultat.solde) > 0;
 
   return (
     <div className="bg-white rounded-xl shadow-sm overflow-hidden">

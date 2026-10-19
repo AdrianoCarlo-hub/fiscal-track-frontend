@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../context/useAuth';
 import obligationService from '../../services/obligationService';
 import Pagination from '../../components/common/Pagination';
 import { ListToolbar } from '../../components/common/DataTable';
 import { useListView } from '../../hooks/useApiData';
+import { libelleImpot, libelleStatutDeclaration } from '../../utils/fiscalConstants';
 
 export default function ObligationsPage() {
   const { utilisateur } = useAuth();
@@ -25,12 +26,17 @@ export default function ObligationsPage() {
       <h1 className="fiscal-page-title mb-6 text-3xl font-semibold">Mes obligations fiscales</h1>
 
       <div className="mb-5 flex flex-wrap gap-2">
-        {['TOUS', 'ATTENTE', 'DEPOSE', 'RETARD'].map((f) => (
-          <button key={f} onClick={() => setFiltre(f)}
+        {[
+          ['TOUS', 'Toutes'],
+          ['ATTENTE', 'À déposer'],
+          ['DEPOSE', 'Déposées'],
+          ['RETARD', 'En retard'],
+        ].map(([code, libelle]) => (
+          <button key={code} onClick={() => setFiltre(code)}
             className={`px-4 py-2 rounded-lg text-sm transition ${
-              filtre === f ? 'bg-primary text-white' : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+              filtre === code ? 'bg-primary text-white' : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
             }`}>
-            {f}
+            {libelle}
           </button>
         ))}
       </div>
@@ -51,7 +57,7 @@ export default function ObligationsPage() {
             <tbody className="divide-y divide-slate-100">
               {liste.items.map((o) => (
                 <tr key={o.idObligationFiscale} className="hover:bg-slate-50">
-                  <td className="px-4 py-3 font-medium">{o.codeImpot}</td>
+                  <td className="px-4 py-3 font-medium">{libelleImpot(o.codeImpot)}</td>
                   <td className="px-4 py-3">{o.periodeFiscale}</td>
                   <td className="px-4 py-3 text-sm">{o.dateLimiteReelle}</td>
                   <td className="px-4 py-3">
@@ -60,7 +66,7 @@ export default function ObligationsPage() {
                       o.statutDeclaration === 'RETARD' ? 'bg-[#B23A33] text-white ring-1 ring-[#B23A33] ring-offset-1' :
                       'bg-amber-50 text-[#8A6200] border border-[#B8860B]/40'
                     }`}>
-                      {o.statutDeclaration}
+                      {libelleStatutDeclaration(o.statutDeclaration)}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-right">

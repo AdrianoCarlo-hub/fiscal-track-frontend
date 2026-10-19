@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../context/useAuth';
 import notificationService from '../../services/notificationService';
 import { useListView } from '../../hooks/useApiData';
 import { ListToolbar } from '../../components/common/DataTable';

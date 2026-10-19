@@ -28,7 +28,7 @@ export default function UtilisateursPage() {
   };
 
   useEffect(() => {
-    chargerUtilisateurs();
+    Promise.resolve().then(chargerUtilisateurs);
   }, []);
 
   const supprimer = async (idAgent) => {

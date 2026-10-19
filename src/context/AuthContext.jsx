@@ -1,19 +1,15 @@
-import { createContext, useState, useEffect, useContext } from 'react';
+import { useState } from 'react';
 import authService from '../services/authService';
+import { AuthContext } from './useAuth';
 
-const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [utilisateur, setUtilisateur] = useState(null);
-  const [chargement, setChargement] = useState(true);
-
-  useEffect(() => {
+  // Lecture synchrone du stockage local : pas d'effet ni de rendu de chargement.
+  const [utilisateur, setUtilisateur] = useState(() => {
     const user = authService.getUtilisateur();
-    if (user && authService.isAuthentifie()) {
-      setUtilisateur(user);
-    }
-    setChargement(false);
-  }, []);
+    return user && authService.isAuthentifie() ? user : null;
+  });
+  const [chargement] = useState(false);
 
   const login = async (identifiant, motDePasse) => {
     const data = await authService.login(identifiant, motDePasse);
@@ -46,12 +42,4 @@ export function AuthProvider({ children }) {
       {children}
     </AuthContext.Provider>
   );
-}
-
-export function useAuth() {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth doit etre utilise dans un AuthProvider');
-  }
-  return context;
 }

@@ -23,7 +23,9 @@ export default function ParametresPage() {
     }
   };
 
-  useEffect(() => { charger(); }, []);
+  useEffect(() => {
+    Promise.resolve().then(charger);
+  }, []);
 
   return (
     <div>

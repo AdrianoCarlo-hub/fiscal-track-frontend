@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../context/useAuth';
 import calendrierService from '../../services/calendrierService';
+import { libelleImpot } from '../../utils/fiscalConstants';
 
 const statutDetails = (obligation) => {
   if (obligation.statutDeclaration === 'DEPOSE') return { label: 'Déclaration déposée', color: 'border-success bg-success text-white', dot: 'bg-success' };
@@ -28,8 +29,11 @@ export default function CalendrierPage() {
   const [selection, setSelection] = useState(null);
 
   useEffect(() => {
-    setChargement(true);
-    calendrierService.parContribuableEtAnnee(utilisateur.identifiant, annee)
+    Promise.resolve()
+      .then(() => {
+        setChargement(true);
+        return calendrierService.parContribuableEtAnnee(utilisateur.identifiant, annee);
+      })
       .then(setObligations)
       .catch(() => {})
       .finally(() => setChargement(false));
@@ -75,7 +79,7 @@ export default function CalendrierPage() {
 
       <section className="mb-6 grid gap-3 rounded-xl border border-slate-200 bg-white p-4 sm:grid-cols-3" aria-label="Filtres du calendrier">
         <label className="text-xs font-medium text-slate-600">Type d’impôt<select value={typeImpot} onChange={(event) => setTypeImpot(event.target.value)} className="mt-1.5 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm">
-          <option value="TOUS">Tous les impôts</option>{types.map((type) => <option key={type}>{type}</option>)}
+          <option value="TOUS">Tous les impôts</option>{types.map((type) => <option key={type} value={type}>{libelleImpot(type)}</option>)}
         </select></label>
         <label className="text-xs font-medium text-slate-600">Mois<select value={moisFiltre} onChange={(event) => setMoisFiltre(event.target.value)} className="mt-1.5 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm">
           <option value="TOUS">Toute l’année</option>{moisOptions.map((month) => <option key={month.value} value={month.value}>{month.label}</option>)}
@@ -90,7 +94,7 @@ export default function CalendrierPage() {
         {prochaines.length === 0 ? <p className="py-3 text-sm text-slate-500">Aucune échéance à venir pour cette année.</p> : <ul className="divide-y divide-slate-100">{prochaines.map((item) => {
           const status = statutDetails(item);
           return <li key={item.idObligationFiscale}><button onClick={() => setSelection(item)} className="flex w-full flex-wrap items-center justify-between gap-2 py-3 text-left hover:bg-slate-50">
-            <span className="flex items-center gap-3"><i className={`h-2.5 w-2.5 rounded-full ${status.dot}`} /><span><strong className="block text-sm text-primary">{item.codeImpot} · {item.periodeFiscale}</strong><span className="text-xs text-slate-500">{formatDate(item.dateLimiteReelle)}</span></span></span><span className={`rounded-md border px-2.5 py-1 text-xs font-semibold ${status.color}`}>{status.label}</span>
+            <span className="flex items-center gap-3"><i className={`h-2.5 w-2.5 rounded-full ${status.dot}`} /><span><strong className="block text-sm text-primary">{libelleImpot(item.codeImpot)} · {item.periodeFiscale}</strong><span className="text-xs text-slate-500">{formatDate(item.dateLimiteReelle)}</span></span></span><span className={`rounded-md border px-2.5 py-1 text-xs font-semibold ${status.color}`}>{status.label}</span>
           </button></li>;
         })}</ul>}
       </section>
@@ -111,7 +115,7 @@ export default function CalendrierPage() {
               <div className="space-y-2">
                 {items.map((o) => (
                   <button key={o.idObligationFiscale} onClick={() => setSelection(o)} className="flex w-full flex-wrap items-center justify-between gap-3 border-b border-slate-100 py-3 text-left last:border-0 hover:bg-slate-50">
-                    <span><strong className="block text-sm font-semibold text-primary">{o.codeImpot} · {o.periodeFiscale}</strong><span className="text-xs text-slate-500">Échéance : {formatDate(o.dateLimiteReelle)}</span></span>
+                    <span><strong className="block text-sm font-semibold text-primary">{libelleImpot(o.codeImpot)} · {o.periodeFiscale}</strong><span className="text-xs text-slate-500">Échéance : {formatDate(o.dateLimiteReelle)}</span></span>
                     <StatutBadge statut={o} />
                   </button>
                 ))}
@@ -122,7 +126,7 @@ export default function CalendrierPage() {
       )}
       {selection && <div className="fixed inset-0 z-50 flex items-end justify-center bg-[#101936]/50 p-0 sm:items-center sm:p-4" onClick={() => setSelection(null)}>
         <section role="dialog" aria-modal="true" aria-labelledby="echeance-title" onClick={(event) => event.stopPropagation()} className="w-full max-w-lg rounded-t-2xl bg-white p-6 shadow-xl sm:rounded-2xl">
-          <div className="mb-5 flex items-start justify-between"><div><p className="text-sm text-slate-500">Détail de l’obligation</p><h2 id="echeance-title" className="mt-1 font-serif text-2xl font-semibold text-primary">{selection.codeImpot}</h2></div><button onClick={() => setSelection(null)} aria-label="Fermer" className="rounded-md px-3 py-1 text-slate-500 hover:bg-slate-100">✕</button></div>
+          <div className="mb-5 flex items-start justify-between"><div><p className="text-sm text-slate-500">Détail de l’obligation</p><h2 id="echeance-title" className="mt-1 font-serif text-2xl font-semibold text-primary">{libelleImpot(selection.codeImpot)}</h2></div><button onClick={() => setSelection(null)} aria-label="Fermer" className="rounded-md px-3 py-1 text-slate-500 hover:bg-slate-100">✕</button></div>
           <dl className="grid grid-cols-2 gap-4 text-sm"><div><dt className="text-slate-500">Période</dt><dd className="mt-1 font-medium text-primary">{selection.periodeFiscale || '—'}</dd></div><div><dt className="text-slate-500">Échéance</dt><dd className="mt-1 font-medium text-primary">{formatDate(selection.dateLimiteReelle)}</dd></div><div><dt className="text-slate-500">Statut</dt><dd className="mt-1"><StatutBadge statut={selection} /></dd></div><div><dt className="text-slate-500">Déclaration</dt><dd className="mt-1 font-medium text-primary">{selection.statutDeclaration === 'DEPOSE' ? 'Déposée' : 'Non déposée'}</dd></div></dl>
           {selection.statutDeclaration !== 'DEPOSE' && <Link to={`/contribuable/declarations/deposer/${selection.idObligationFiscale}`} className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-3 text-sm font-semibold text-white hover:bg-primary/90">Déclarer cette obligation <ArrowRight className="h-4 w-4" /></Link>}
         </section>

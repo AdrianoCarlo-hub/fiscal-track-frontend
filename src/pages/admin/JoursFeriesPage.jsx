@@ -22,7 +22,9 @@ export default function JoursFeriesPage() {
     }
   };
 
-  useEffect(() => { charger(); }, []);
+  useEffect(() => {
+    Promise.resolve().then(charger);
+  }, []);
 
   const ajouter = async (e) => {
     e.preventDefault();

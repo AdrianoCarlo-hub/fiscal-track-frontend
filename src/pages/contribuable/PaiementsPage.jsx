@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../context/useAuth';
 import compteCourantService from '../../services/compteCourantService';
 import { useListView } from '../../hooks/useApiData';
 import { ListToolbar } from '../../components/common/DataTable';
 import Pagination from '../../components/common/Pagination';
+import { libelleStatutRecouvrement } from '../../utils/formatUtils';
 
 export default function PaiementsPage() {
   const { utilisateur } = useAuth();
@@ -46,7 +47,7 @@ export default function PaiementsPage() {
                   c.statutRecouvrement === 'PARTIEL' ? 'bg-yellow-100 text-yellow-700' :
                   'bg-red-100 text-red-700'
                 }`}>
-                  {c.statutRecouvrement}
+                  {libelleStatutRecouvrement(c.statutRecouvrement)}
                 </span>
               </div>
               <div className="grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">

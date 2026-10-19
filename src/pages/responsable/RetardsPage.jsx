@@ -3,6 +3,7 @@ import obligationService from '../../services/obligationService';
 import { useListView } from '../../hooks/useApiData';
 import { ListToolbar } from '../../components/common/DataTable';
 import Pagination from '../../components/common/Pagination';
+import { libelleImpot } from '../../utils/fiscalConstants';
 
 export default function RetardsPage() {
   const [obligations, setObligations] = useState([]);
@@ -39,11 +40,11 @@ export default function RetardsPage() {
               {liste.items.map((o) => (
                 <tr key={o.idObligationFiscale}>
                   <td className="px-4 py-3 font-mono text-sm">{o.nif}</td>
-                  <td className="px-4 py-3">{o.codeImpot}</td>
+                  <td className="px-4 py-3">{libelleImpot(o.codeImpot)}</td>
                   <td className="px-4 py-3">{o.periodeFiscale}</td>
                   <td className="px-4 py-3 text-sm font-semibold text-danger">{o.dateLimiteReelle}</td>
                   <td className="px-4 py-3">
-                    <span className="rounded-md border border-danger bg-danger px-2.5 py-1 text-xs font-bold text-white">RETARD</span>
+                    <span className="rounded-md border border-danger bg-danger px-2.5 py-1 text-xs font-bold text-white">En retard</span>
                   </td>
                 </tr>
               ))}

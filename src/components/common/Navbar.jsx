@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Bell, ChevronDown, LogOut, Menu, Search, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../context/useAuth';
 import Button from '../ui/Button';
 
 const notifications = [

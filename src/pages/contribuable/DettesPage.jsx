@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../context/useAuth';
 import compteCourantService from '../../services/compteCourantService';
 import { useListView } from '../../hooks/useApiData';
 import { ListToolbar } from '../../components/common/DataTable';
 import Pagination from '../../components/common/Pagination';
+import { libelleStatutRecouvrement } from '../../utils/formatUtils';
 
 export default function DettesPage() {
   const { utilisateur } = useAuth();
@@ -45,7 +46,7 @@ export default function DettesPage() {
             <div key={d.idCompte} className="bg-white p-5 rounded-xl shadow-sm flex justify-between items-center">
               <div>
                 <p className="font-medium">Compte #{d.idCompte}</p>
-                <p className="text-xs text-slate-500">Statut : {d.statutRecouvrement}</p>
+                <p className="text-xs text-slate-500">Statut : {libelleStatutRecouvrement(d.statutRecouvrement)}</p>
               </div>
               <p className="text-xl font-bold text-red-600">{formatMontant(d.resteARecouvrer)}</p>
             </div>

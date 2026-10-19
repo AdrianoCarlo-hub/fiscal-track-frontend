@@ -55,3 +55,18 @@ export function getStatutColor(statut) {
   };
   return colors[statut] || 'bg-slate-100 text-slate-700';
 }
+
+/**
+ * Libelles lisibles des statuts de recouvrement (l'agent et le contribuable
+ * lisent un texte, pas le code brut).
+ */
+export function libelleStatutRecouvrement(statut) {
+  const libelles = {
+    NON_SOLDE: 'Non soldé',
+    PARTIEL: 'Partiellement soldé',
+    SOLDE: 'Soldé',
+    TITRE_EMIS: 'Titre de recouvrement émis',
+    ATD_LANCE: 'Recouvrement forcé engagé',
+  };
+  return libelles[statut] || statut;
+}

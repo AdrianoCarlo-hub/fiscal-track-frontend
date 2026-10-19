@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import contribuableService from '../../services/contribuableService';
 import obligationService from '../../services/obligationService';
@@ -6,6 +6,8 @@ import compteCourantService from '../../services/compteCourantService';
 import ObligationForm from '../../components/forms/ObligationForm';
 import ContribuableForm from '../../components/forms/ContribuableForm';
 import { formatMontant } from '../../utils/formatUtils';
+import { libelleStatutRecouvrement } from '../../utils/formatUtils';
+import { libelleImpot, libelleStatutDeclaration } from '../../utils/fiscalConstants';
 
 export default function DossierDetailPage() {
   const { nif } = useParams();
@@ -17,7 +19,7 @@ export default function DossierDetailPage() {
   const [modalObligationOuvert, setModalObligationOuvert] = useState(false);
   const [modalModifOuvert, setModalModifOuvert] = useState(false);
 
-  const charger = () => {
+  const charger = useCallback(() => {
     setChargement(true);
     Promise.all([
       contribuableService.parNif(nif),
@@ -31,11 +33,11 @@ export default function DossierDetailPage() {
       })
       .catch(() => {})
       .finally(() => setChargement(false));
-  };
+  }, [nif]);
 
   useEffect(() => {
-    charger();
-  }, [nif]);
+    Promise.resolve().then(charger);
+  }, [nif, charger]);
 
   if (chargement) return <p>Chargement.....</p>;
   if (!contribuable) return <p>Contribuable introuvable</p>;
@@ -90,7 +92,7 @@ export default function DossierDetailPage() {
           <tbody className="divide-y divide-slate-100">
             {obligations.map((o) => (
               <tr key={o.idObligationFiscale}>
-                <td className="px-4 py-3">{o.codeImpot}</td>
+                <td className="px-4 py-3">{libelleImpot(o.codeImpot)}</td>
                 <td className="px-4 py-3">{o.periodeFiscale}</td>
                 <td className="px-4 py-3 text-sm">{o.dateLimiteReelle}</td>
                 <td className="px-4 py-3 text-sm">
@@ -99,7 +101,7 @@ export default function DossierDetailPage() {
                     o.statutDeclaration === 'RETARD' ? 'bg-red-100 text-red-700' :
                     'bg-yellow-100 text-yellow-700'
                   }`}>
-                    {o.statutDeclaration}
+                    {libelleStatutDeclaration(o.statutDeclaration)}
                   </span>
                 </td>
               </tr>
@@ -125,7 +127,7 @@ export default function DossierDetailPage() {
                 <td className="px-4 py-3 text-right">{formatMontant(c.montantTotalDu)}</td>
                 <td className="px-4 py-3 text-right text-green-600">{formatMontant(c.montantPaye)}</td>
                 <td className="px-4 py-3 text-right font-bold text-red-600">{formatMontant(c.resteARecouvrer)}</td>
-                <td className="px-4 py-3 text-sm">{c.statutRecouvrement}</td>
+                <td className="px-4 py-3 text-sm">{libelleStatutRecouvrement(c.statutRecouvrement)}</td>
               </tr>
             ))}
           </tbody>

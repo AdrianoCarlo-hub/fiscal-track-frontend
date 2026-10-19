@@ -3,6 +3,7 @@ import compteCourantService from '../../services/compteCourantService';
 import { useListView } from '../../hooks/useApiData';
 import { ListToolbar } from '../../components/common/DataTable';
 import Pagination from '../../components/common/Pagination';
+import { libelleStatutRecouvrement } from '../../utils/formatUtils';
 
 export default function DettesAgentPage() {
   const [comptes, setComptes] = useState([]);
@@ -58,7 +59,7 @@ export default function DettesAgentPage() {
                       c.statutRecouvrement === 'TITRE_EMIS' ? 'bg-orange-100 text-orange-700' :
                       c.statutRecouvrement === 'ATD_LANCE' ? 'bg-red-100 text-red-700' :
                       'bg-yellow-100 text-yellow-700'
-                    }`}>{c.statutRecouvrement}</span>
+                    }`}>{libelleStatutRecouvrement(c.statutRecouvrement)}</span>
                   </td>
                 </tr>
               ))}

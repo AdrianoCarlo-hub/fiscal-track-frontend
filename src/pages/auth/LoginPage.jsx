@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Eye, EyeOff, KeyRound, ShieldCheck, UserRound } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../context/useAuth';
 import { getRouteParRole } from '../../routes/roleRoutes';
 import Button from '../../components/ui/Button';
 
