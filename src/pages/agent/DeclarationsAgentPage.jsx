@@ -3,6 +3,13 @@ import declarationService from '../../services/declarationService';
 import { useListView } from '../../hooks/useApiData';
 import { ListToolbar } from '../../components/common/DataTable';
 import Pagination from '../../components/common/Pagination';
+import { formatMontant } from '../../utils/formatUtils';
+
+const FILTRES = [
+  { code: 'EN_ATTENTE_VALIDATION', libelle: 'En attente' },
+  { code: 'VALIDEE', libelle: 'Validées' },
+  { code: 'REJETEE', libelle: 'Rejetées' },
+];
 
 export default function DeclarationsAgentPage() {
   const [declarations, setDeclarations] = useState([]);
@@ -22,7 +29,9 @@ export default function DeclarationsAgentPage() {
     }
   };
 
-  useEffect(() => { charger(); }, []);
+  useEffect(() => {
+    Promise.resolve().then(charger);
+  }, []);
 
   const valider = async (id) => {
     try {
@@ -34,9 +43,14 @@ export default function DeclarationsAgentPage() {
   };
 
   const rejeter = async (id) => {
-    if (!window.confirm('Rejeter cette declaration ?')) return;
+    const motif = window.prompt('Motif du rejet (obligatoire) — il sera affiché au contribuable :');
+    if (motif === null) return;
+    if (!motif.trim()) {
+      alert('Le motif du rejet est obligatoire.');
+      return;
+    }
     try {
-      await declarationService.rejeter(id);
+      await declarationService.rejeter(id, motif.trim());
       charger();
     } catch (err) {
       alert(err.response?.data?.message || 'Erreur');
@@ -48,12 +62,12 @@ export default function DeclarationsAgentPage() {
       <h1 className="text-2xl font-bold text-slate-800 mb-6">Instruction des declarations</h1>
 
       <div className="flex gap-2 mb-6">
-        {['EN_ATTENTE_VALIDATION', 'VALIDEE', 'REJETEE'].map((f) => (
-          <button key={f} onClick={() => setFiltre(f)}
+        {FILTRES.map((f) => (
+          <button key={f.code} onClick={() => setFiltre(f.code)}
             className={`px-4 py-2 rounded-lg text-sm ${
-              filtre === f ? 'bg-sky-500 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'
+              filtre === f.code ? 'bg-sky-500 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'
             }`}>
-            {f}
+            {f.libelle}
           </button>
         ))}
       </div>
@@ -78,18 +92,32 @@ export default function DeclarationsAgentPage() {
                   d.statutValidation === 'VALIDEE' ? 'bg-green-100 text-green-700' :
                   d.statutValidation === 'REJETEE' ? 'bg-red-100 text-red-700' :
                   'bg-yellow-100 text-yellow-700'
-                }`}>{d.statutValidation}</span>
+                }`}>
+                  {d.statutValidation === 'VALIDEE' ? 'Validée'
+                    : d.statutValidation === 'REJETEE' ? 'Rejetée' : 'En attente'}
+                </span>
               </div>
               <div className="grid grid-cols-2 gap-4 mt-4 text-sm">
                 <div>
-                  <p className="text-slate-500 text-xs">Chiffre d'affaires</p>
-                  <p className="font-medium">{Number(d.chiffreAffairesDeclare).toLocaleString('fr-MG')} Ar</p>
+                  <p className="text-slate-500 text-xs">Chiffre d’affaires</p>
+                  <p className="font-medium">{formatMontant(d.chiffreAffairesDeclare)}</p>
                 </div>
                 <div>
-                  <p className="text-slate-500 text-xs">Impot calcule</p>
-                  <p className="font-medium">{Number(d.impotPrincipalCalcule).toLocaleString('fr-MG')} Ar</p>
+                  <p className="text-slate-500 text-xs">Impôt calculé</p>
+                  <p className="font-medium">{formatMontant(d.impotPrincipalCalcule)}</p>
                 </div>
               </div>
+              {d.motifRejet && (
+                <p className="mt-3 rounded-lg border border-red-200 bg-red-50 p-2 text-xs text-red-700">
+                  Motif du rejet : {d.motifRejet}
+                </p>
+              )}
+              {d.detailCalcul && (
+                <details className="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-2 text-xs text-slate-600">
+                  <summary className="cursor-pointer font-medium">Détail du calcul</summary>
+                  <pre className="mt-2 whitespace-pre-wrap">{d.detailCalcul}</pre>
+                </details>
+              )}
               {d.statutValidation === 'EN_ATTENTE_VALIDATION' && (
                 <div className="flex gap-2 mt-4">
                   <button onClick={() => valider(d.idDeclaration)}

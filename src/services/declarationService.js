@@ -12,7 +12,7 @@ const declarationService = {
   deposer: async (data) => (await api.post('/api/declarations', data)).data,
   previsualiser: async (data) => (await api.post('/api/declarations/preview', data)).data,
   valider: async (id) => (await api.put(`/api/declarations/${id}/valider`)).data,
-  rejeter: async (id) => (await api.put(`/api/declarations/${id}/rejeter`)).data,
+  rejeter: async (id, motif) => (await api.put(`/api/declarations/${id}/rejeter`, { motif })).data,
 };
 
 export default declarationService;
