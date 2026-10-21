@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import calculFiscalService from '../../services/calculFiscalService';
+import { formatMontant } from '../../utils/formatUtils';
 
 export default function CalculIsForm({ onResultat, onErreur }) {
   const [form, setForm] = useState({
@@ -7,7 +8,7 @@ export default function CalculIsForm({ onResultat, onErreur }) {
     adherentCga: false,
     achatsConformes: '',
     chargesSalariales: '',
-    acomptes: '',
+    impotN1: '',
   });
   const [chargement, setChargement] = useState(false);
 
@@ -27,7 +28,6 @@ export default function CalculIsForm({ onResultat, onErreur }) {
         adherentCga: form.adherentCga,
         achatsConformes: form.achatsConformes ? Number(form.achatsConformes) : null,
         chargesSalariales: form.chargesSalariales ? Number(form.chargesSalariales) : null,
-        acomptes: form.acomptes ? Number(form.acomptes) : null,
       };
       const resultat = await calculFiscalService.calculerIs(data);
       onResultat(resultat);
@@ -38,6 +38,10 @@ export default function CalculIsForm({ onResultat, onErreur }) {
     }
   };
 
+  const impotN1Nombre = Number(form.impotN1);
+  const acompteSimule = Number.isFinite(impotN1Nombre) && impotN1Nombre > 0
+    ? Math.round(impotN1Nombre * 0.25) : 0;
+
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <Field label="CA brut (Ar) *" name="caBrut" type="number" value={form.caBrut} onChange={handleChange} required />
@@ -45,7 +49,7 @@ export default function CalculIsForm({ onResultat, onErreur }) {
       <div className="flex items-center gap-2">
         <input type="checkbox" id="cga" name="adherentCga" checked={form.adherentCga} onChange={handleChange}
           className="w-4 h-4" />
-        <label htmlFor="cga" className="text-sm">Adherent CGA (abattement 50% plafonne a 5M)</label>
+        <label htmlFor="cga" className="text-sm">Adhérent CGA (abattement 50 % plafonné à 5 M Ar)</label>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
@@ -53,11 +57,22 @@ export default function CalculIsForm({ onResultat, onErreur }) {
         <Field label="Charges salariales (Ar)" name="chargesSalariales" type="number" value={form.chargesSalariales} onChange={handleChange} />
       </div>
 
-      <Field label="Acomptes deja verses (Ar)" name="acomptes" type="number" value={form.acomptes} onChange={handleChange} />
+      <Field label="Impôt de l’année précédente (Ar)" name="impotN1" type="number" value={form.impotN1} onChange={handleChange} />
+
+      {acompteSimule > 0 && (
+        <div className="rounded-lg border border-sky-200 bg-sky-50 p-3 text-sm text-sky-900">
+          <p className="font-semibold">Acomptes calculés (simulation, rien n’est enregistré)</p>
+          <div className="mt-2 grid gap-2 sm:grid-cols-2">
+            <p>Acompte AC1 (31 mars) : <strong>{formatMontant(acompteSimule)}</strong></p>
+            <p>Acompte AC2 (30 juin) : <strong>{formatMontant(acompteSimule)}</strong></p>
+          </div>
+          <p className="mt-1 text-xs">Chaque acompte représente 25 % de l’impôt de l’année précédente.</p>
+        </div>
+      )}
 
       <button type="submit" disabled={chargement}
         className="w-full bg-sky-500 hover:bg-sky-600 text-white font-semibold py-3 rounded-lg disabled:opacity-50">
-        {chargement ? 'Calcul...' : 'Calculer l\'IS'}
+        {chargement ? 'Calcul…' : 'Calculer l’IS'}
       </button>
     </form>
   );

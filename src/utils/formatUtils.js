@@ -70,3 +70,23 @@ export function libelleStatutRecouvrement(statut) {
   };
   return libelles[statut] || statut;
 }
+
+
+/** Taux decimal (0.25) affiche en pourcentage lisible (25 %). */
+export function formatTaux(taux) {
+  if (taux === null || taux === undefined || taux === '') return '—';
+  const nombre = Number(taux);
+  if (!Number.isFinite(nombre)) return '—';
+  return `${new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 2 }).format(nombre * 100)} %`;
+}
+
+/** Couleurs des badges de statut d'acompte. */
+export function getStatutAcompteColor(statut) {
+  const couleurs = {
+    PAYE: 'bg-green-100 text-green-700',
+    PARTIEL: 'bg-yellow-100 text-yellow-700',
+    A_PAYER: 'bg-sky-100 text-sky-700',
+    EN_RETARD: 'bg-red-100 text-red-700',
+  };
+  return couleurs[statut] || 'bg-slate-100 text-slate-700';
+}

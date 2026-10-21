@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { ArrowRight, CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useAuth } from '../../context/useAuth';
 import calendrierService from '../../services/calendrierService';
+import ListeAcomptesObligatoires from '../../components/acomptes/ListeAcomptesObligatoires';
 import { libelleImpot } from '../../utils/fiscalConstants';
 
 const statutDetails = (obligation) => {
@@ -70,6 +71,10 @@ export default function CalendrierPage() {
           <button aria-label="Année suivante" onClick={() => setAnnee((year) => year + 1)} className="rounded-md p-2 text-slate-600 hover:bg-slate-100"><ChevronRight className="h-4 w-4" /></button>
         </div>
       </header>
+
+      <div className="mb-6">
+        <ListeAcomptesObligatoires nif={utilisateur.identifiant} afficherLienDepot />
+      </div>
 
       <div className="mb-5 flex flex-wrap gap-2" aria-label="Légende des statuts">
         {[

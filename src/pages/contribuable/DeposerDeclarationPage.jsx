@@ -4,13 +4,17 @@ import { ArrowLeft, Calculator, Info } from 'lucide-react';
 import declarationService from '../../services/declarationService';
 import obligationService from '../../services/obligationService';
 import contribuableService from '../../services/contribuableService';
+import acomptesService, { messageErreurAcomptes } from '../../services/acomptesService';
 import FormulaireDeclaration from '../../components/forms/FormulaireDeclaration';
+import AcomptesDejaVerses from '../../components/acomptes/AcomptesDejaVerses';
 import { libelleImpot } from '../../utils/fiscalConstants';
 import { formatMontant, formatDate } from '../../utils/formatUtils';
 import {
   valeursInitiales,
   construireCorps,
   pretPourPrevisualisation,
+  impotAvantAcomptes,
+  acomptesVerses,
 } from '../../utils/declarationUtils';
 
 const AIDE_AGENT = 'Si ces informations sont inexactes, contactez votre agent du centre fiscal.';
@@ -22,6 +26,9 @@ export default function DeposerDeclarationPage() {
   const [obligation, setObligation] = useState(null);
   const [dossier, setDossier] = useState(null);
   const [valeurs, setValeurs] = useState(null);
+  const [acomptesExercice, setAcomptesExercice] = useState([]);
+  const [chargementAcomptes, setChargementAcomptes] = useState(false);
+  const [erreurAcomptes, setErreurAcomptes] = useState('');
   const [chargement, setChargement] = useState(true);
   const [erreurChargement, setErreurChargement] = useState('');
 
@@ -59,6 +66,23 @@ export default function DeposerDeclarationPage() {
     charger();
     return () => { actif = false; };
   }, [idObligation]);
+
+  useEffect(() => {
+    if (!obligation || !['IR', 'IS'].includes(obligation.codeImpot)) return undefined;
+    const exercice = Number(String(obligation.periodeFiscale || '').slice(0, 4)) || new Date().getFullYear();
+    let actif = true;
+    Promise.resolve()
+      .then(() => {
+        if (!actif) return null;
+        setChargementAcomptes(true);
+        setErreurAcomptes('');
+        return acomptesService.lister(obligation.nif, exercice);
+      })
+      .then((donnees) => { if (actif && donnees) setAcomptesExercice(Array.isArray(donnees) ? donnees : []); })
+      .catch((err) => { if (actif) setErreurAcomptes(messageErreurAcomptes(err)); })
+      .finally(() => { if (actif) setChargementAcomptes(false); });
+    return () => { actif = false; };
+  }, [obligation]);
 
   useEffect(() => {
     if (!obligation || !valeurs || !pretPourPrevisualisation(obligation.codeImpot, valeurs)) {
@@ -139,6 +163,7 @@ export default function DeposerDeclarationPage() {
   }
 
   const codeImpot = obligation.codeImpot;
+  const estAcompte = String(codeImpot).startsWith('ACOMPTE');
   const pret = pretPourPrevisualisation(codeImpot, valeurs);
   const corpsActuel = JSON.stringify(construireCorps(codeImpot, idObligation, valeurs, 0));
   // Le resultat ne s'affiche que si la saisie correspond toujours au calcul.
@@ -146,6 +171,31 @@ export default function DeposerDeclarationPage() {
   const impotRetenu = previewAffiche?.disponible ? previewAffiche.impotRetenu : null;
   const creditFiscal = previewAffiche?.disponible ? Number(previewAffiche.creditFiscal || 0) : 0;
   const aCredit = creditFiscal > 0;
+  const detailAcomptes = previewAffiche?.detailAcomptes || (
+    ['IR', 'IS'].includes(codeImpot) && acomptesExercice.length > 0
+      ? {
+        lignes: acomptesExercice.map((a) => ({
+          periode: a.periodeFiscale,
+          dateLimiteReelle: a.dateLimiteReelle,
+          statut: a.statutDeclaration,
+          montantDu: a.montantAcompte,
+          montantPaye: a.montantPaye,
+        })),
+        acomptesPayes: acomptesExercice.reduce((total, a) => total + Number(a.montantPaye || 0), 0),
+        autresAcomptes: 0,
+        creditAnterieur: 0,
+        totalDeduit: acomptesExercice.reduce((total, a) => total + Number(a.montantPaye || 0), 0),
+      }
+      : null
+  );
+  const impotCalculeAvant = previewAffiche?.disponible
+    ? impotAvantAcomptes(previewAffiche, codeImpot) : null;
+  const verses = acomptesVerses(detailAcomptes);
+  const creditAnterieur = Number(detailAcomptes?.creditAnterieur || 0);
+  const detailAcompte = previewAffiche?.detailAcomptes || {};
+  const baseAcompte = detailAcompte.base ?? previewAffiche?.baseAcompte;
+  const tauxAcompte = detailAcompte.taux ?? previewAffiche?.tauxAcompte;
+  const exerciceBaseAcompte = detailAcompte.exerciceBase ?? previewAffiche?.exerciceBase;
 
   return (
     <div className="max-w-3xl space-y-6">
@@ -154,7 +204,9 @@ export default function DeposerDeclarationPage() {
           className="inline-flex items-center gap-2 text-sm text-slate-500 hover:text-primary">
           <ArrowLeft className="h-4 w-4" /> Retour
         </button>
-        <h1 className="mt-2 text-2xl font-bold text-slate-800">Déposer une déclaration</h1>
+        <h1 className="mt-2 text-2xl font-bold text-slate-800">
+          {estAcompte ? 'Déposer un acompte' : 'Déposer une déclaration'}
+        </h1>
         <p className="mt-1 text-sm text-slate-500">
           {libelleImpot(codeImpot)} — période {obligation.periodeFiscale}
           {obligation.dateLimiteReelle && <> — dépôt avant le {formatDate(obligation.dateLimiteReelle)}</>}
@@ -175,41 +227,127 @@ export default function DeposerDeclarationPage() {
 
         <FormulaireDeclaration codeImpot={codeImpot} valeurs={valeurs} onChange={setValeurs} />
 
-        <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-3">
+        {estAcompte && (
+          <section className="rounded-xl border border-sky-200 bg-sky-50 p-4 space-y-3">
+            <h3 className="text-sm font-semibold text-sky-900">Montant de l’acompte (lecture seule)</h3>
+            {chargementPreview && <p className="text-sm text-sky-800">Calcul du montant par le serveur…</p>}
+            {!chargementPreview && erreurPreview && (
+              <p className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800">{erreurPreview}</p>
+            )}
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div>
+                <p className="text-xs uppercase tracking-wide text-sky-700">Base de calcul</p>
+                <p className="mt-1 font-semibold text-sky-950">
+                  {detailAcompte.baseLibelle
+                    || (exerciceBaseAcompte
+                      ? `Base : ${String(codeImpot).replace('ACOMPTE_', '')} ${exerciceBaseAcompte} = ${formatMontant(baseAcompte)}`
+                      : (detailAcompte.type === 'DEBUT_ACTIVITE' ? 'Forfait de démarrage' : '—'))}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-wide text-sky-700">Taux</p>
+                <p className="mt-1 font-semibold text-sky-950">
+                  {tauxAcompte != null ? `${Number(tauxAcompte) * 100} %` : 'Forfait'}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-wide text-sky-700">Montant à payer</p>
+                <p className="mt-1 text-lg font-bold text-sky-950">
+                  {impotRetenu !== null ? formatMontant(impotRetenu) : (chargementPreview ? 'Calcul en cours…' : '—')}
+                </p>
+              </div>
+            </div>
+            <p className="text-xs text-sky-800">
+              Montant recalculé par le serveur au dépôt : il ne peut pas être modifié.
+            </p>
+          </section>
+        )}
+
+        {!estAcompte && ['IR', 'IS'].includes(codeImpot) && (
+          <>
+            {erreurAcomptes && (
+              <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                {erreurAcomptes}
+              </div>
+            )}
+            <AcomptesDejaVerses detail={detailAcomptes} chargement={chargementAcomptes} />
+          </>
+        )}
+
+        {!estAcompte && <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-3">
           <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
             <Calculator className="h-4 w-4 text-primary" /> Impôt calculé par le serveur
           </div>
 
-          <div className={aCredit ? 'grid gap-4 sm:grid-cols-2' : ''}>
-            <div>
-              <label htmlFor="impot-calcule" className="block text-sm font-medium text-slate-700 mb-1">
-                Impôt principal (Ar)
-              </label>
-              <input id="impot-calcule" type="text" readOnly
-                value={impotRetenu !== null ? formatMontant(impotRetenu) : ''}
-                placeholder={chargementPreview ? 'Calcul en cours…' : 'Renseignez les champs ci-dessus'}
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-100 text-slate-700 cursor-not-allowed outline-none text-sm" />
-              <p className="mt-1 text-xs text-slate-500">
-                Ce montant est calculé par le serveur à partir des règles fiscales en vigueur :
-                il n’est pas modifiable.
+          {['IR', 'IS'].includes(codeImpot) ? (
+            <div className="space-y-3">
+              <dl className="divide-y divide-slate-100 rounded-lg border border-slate-200">
+                <div className="flex items-center justify-between gap-4 px-3 py-2 text-sm">
+                  <dt className="text-slate-600">Impôt calculé</dt>
+                  <dd className="font-medium text-slate-800">
+                    {impotCalculeAvant !== null ? formatMontant(impotCalculeAvant) : (chargementPreview ? 'Calcul en cours…' : '—')}
+                  </dd>
+                </div>
+                <div className="flex items-center justify-between gap-4 px-3 py-2 text-sm">
+                  <dt className="text-slate-600">Moins acomptes versés (paiements, douane, marchés publics)</dt>
+                  <dd className="font-medium text-green-700">− {formatMontant(verses)}</dd>
+                </div>
+                <div className="flex items-center justify-between gap-4 px-3 py-2 text-sm">
+                  <dt className="text-slate-600">Moins crédit antérieur reporté</dt>
+                  <dd className="font-medium text-green-700">− {formatMontant(creditAnterieur)}</dd>
+                </div>
+                <div className="flex items-center justify-between gap-4 bg-slate-50 px-3 py-3">
+                  <dt className="font-semibold text-slate-800">
+                    {aCredit ? 'Crédit d’impôt reporté' : 'Solde à payer'}
+                  </dt>
+                  <dd className={`text-lg font-bold ${aCredit ? 'text-emerald-700' : 'text-primary'}`}>
+                    {impotRetenu !== null ? formatMontant(aCredit ? creditFiscal : impotRetenu) : (chargementPreview ? 'Calcul en cours…' : '—')}
+                  </dd>
+                </div>
+              </dl>
+              <p className="text-xs text-slate-500">
+                {aCredit
+                  ? 'Le crédit d’impôt n’est jamais remboursé : il est reporté sur la prochaine déclaration du même impôt.'
+                  : 'Le solde est calculé par le serveur à partir des acomptes réellement payés.'}
               </p>
+              <details className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">
+                <summary className="cursor-pointer font-medium text-slate-700">Comment est-ce calculé ?</summary>
+                <p className="mt-2">
+                  Impôt dû = impôt calculé sur la déclaration. On déduit ensuite les acomptes réellement payés
+                  (AC1, AC2, acomptes de douane et marchés publics) puis le crédit de l’exercice précédent.
+                  Un acompte exigible non payé n’est pas déduit. Le crédit restant est reporté, jamais remboursé.
+                </p>
+              </details>
             </div>
-
-            {aCredit && (
-              <div className="rounded-lg border border-emerald-300 bg-emerald-50 p-3">
-                <p className="text-xs font-medium uppercase tracking-wide text-emerald-700">
-                  {codeImpot === 'TVA' ? 'Crédit de TVA à reporter' : 'Crédit fiscal'} (Ar)
-                </p>
-                <p className="mt-1 text-xl font-bold text-emerald-800">
-                  {formatMontant(creditFiscal)}
-                </p>
-                <p className="mt-1 text-xs text-emerald-700">
-                  Votre {codeImpot === 'TVA' ? 'TVA nette est négative' : 'crédit est positif'} :
-                  vous n’avez rien à payer. Ce crédit est reporté sur votre prochaine déclaration.
+          ) : (
+            <div className={aCredit ? 'grid gap-4 sm:grid-cols-2' : ''}>
+              <div>
+                <label htmlFor="impot-calcule" className="block text-sm font-medium text-slate-700 mb-1">
+                  Impôt principal (Ar)
+                </label>
+                <input id="impot-calcule" type="text" readOnly
+                  value={impotRetenu !== null ? formatMontant(impotRetenu) : ''}
+                  placeholder={chargementPreview ? 'Calcul en cours…' : 'Renseignez les champs ci-dessus'}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-100 text-slate-700 cursor-not-allowed outline-none text-sm" />
+                <p className="mt-1 text-xs text-slate-500">
+                  Ce montant est calculé par le serveur à partir des règles fiscales en vigueur :
+                  il n’est pas modifiable.
                 </p>
               </div>
-            )}
-          </div>
+              {aCredit && (
+                <div className="rounded-lg border border-emerald-300 bg-emerald-50 p-3">
+                  <p className="text-xs font-medium uppercase tracking-wide text-emerald-700">
+                    {codeImpot === 'TVA' ? 'Crédit de TVA à reporter' : 'Crédit fiscal'} (Ar)
+                  </p>
+                  <p className="mt-1 text-xl font-bold text-emerald-800">{formatMontant(creditFiscal)}</p>
+                  <p className="mt-1 text-xs text-emerald-700">
+                    Votre {codeImpot === 'TVA' ? 'TVA nette est négative' : 'crédit est positif'} :
+                    vous n’avez rien à payer. Ce crédit est reporté sur votre prochaine déclaration.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
 
           {previewAffiche?.explication && (
             <p className="text-xs text-slate-600 flex gap-2">
@@ -249,7 +387,7 @@ export default function DeposerDeclarationPage() {
           {pret && erreurPreview && (
             <p className="text-sm text-red-600">{erreurPreview}</p>
           )}
-        </div>
+        </div>}
 
         {erreur && <div className="bg-red-50 text-red-700 p-3 rounded-lg text-sm">{erreur}</div>}
 
@@ -261,7 +399,7 @@ export default function DeposerDeclarationPage() {
           <button type="submit"
             disabled={!pret || chargementPreview || impotRetenu === null || envoi}
             className="px-6 py-2 bg-primary hover:bg-deep text-white rounded-lg text-sm disabled:opacity-50">
-            {envoi ? 'Envoi…' : 'Déposer la déclaration'}
+            {envoi ? 'Envoi…' : (estAcompte ? 'Déposer l’acompte' : 'Déposer la déclaration')}
           </button>
         </div>
       </form>

@@ -5,6 +5,7 @@ import obligationService from '../../services/obligationService';
 import compteCourantService from '../../services/compteCourantService';
 import ObligationForm from '../../components/forms/ObligationForm';
 import ContribuableForm from '../../components/forms/ContribuableForm';
+import ListeAcomptesObligatoires from '../../components/acomptes/ListeAcomptesObligatoires';
 import { formatMontant } from '../../utils/formatUtils';
 import { libelleStatutRecouvrement } from '../../utils/formatUtils';
 import { libelleImpot, libelleStatutDeclaration } from '../../utils/fiscalConstants';
@@ -18,6 +19,7 @@ export default function DossierDetailPage() {
   const [chargement, setChargement] = useState(true);
   const [modalObligationOuvert, setModalObligationOuvert] = useState(false);
   const [modalModifOuvert, setModalModifOuvert] = useState(false);
+  const [ongletActif, setOngletActif] = useState('OBLIGATIONS');
 
   const charger = useCallback(() => {
     setChargement(true);
@@ -80,6 +82,25 @@ export default function DossierDetailPage() {
         </div>
       </div>
 
+      <div className="mb-5 flex flex-wrap gap-2" role="tablist" aria-label="Sections du dossier">
+        {[
+          ['OBLIGATIONS', `Obligations (${obligations.length})`],
+          ['COMPTE', `Compte courant (${comptes.length})`],
+          ['ACOMPTES', 'Acomptes'],
+        ].map(([code, libelle]) => (
+          <button key={code} type="button" role="tab" aria-selected={ongletActif === code}
+            onClick={() => setOngletActif(code)}
+            className={`rounded-lg px-4 py-2 text-sm font-medium transition ${
+              ongletActif === code
+                ? 'bg-primary text-white'
+                : 'border border-slate-300 bg-white text-slate-600 hover:bg-slate-50'
+            }`}>
+            {libelle}
+          </button>
+        ))}
+      </div>
+
+      {ongletActif === 'OBLIGATIONS' && <>
       <h2 className="text-xl font-bold text-slate-800 mb-3">Obligations ({obligations.length})</h2>
       <div className="bg-white rounded-xl shadow-sm overflow-hidden mb-6">
         <table className="w-full">
@@ -112,6 +133,9 @@ export default function DossierDetailPage() {
         </table>
       </div>
 
+      </>}
+
+      {ongletActif === 'COMPTE' && <>
       <h2 className="text-xl font-bold text-slate-800 mb-3">Compte courant ({comptes.length})</h2>
       <div className="bg-white rounded-xl shadow-sm overflow-hidden">
         <table className="w-full">
@@ -135,6 +159,15 @@ export default function DossierDetailPage() {
           </tbody>
         </table>
       </div>
+      </>}
+
+      {ongletActif === 'ACOMPTES' && (
+        <ListeAcomptesObligatoires
+          nif={nif}
+          titre={`Acomptes obligatoires de ${contribuable.raisonSociale}`}
+          description="Acomptes IR et IS de l’exercice en cours, avec le total restant à payer."
+        />
+      )}
 
       {modalObligationOuvert && (
         <ObligationForm

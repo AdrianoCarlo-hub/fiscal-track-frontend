@@ -5,6 +5,7 @@ import obligationService from '../../services/obligationService';
 import Pagination from '../../components/common/Pagination';
 import { ListToolbar } from '../../components/common/DataTable';
 import { useListView } from '../../hooks/useApiData';
+import ListeAcomptesObligatoires from '../../components/acomptes/ListeAcomptesObligatoires';
 import { libelleImpot, libelleStatutDeclaration } from '../../utils/fiscalConstants';
 
 export default function ObligationsPage() {
@@ -24,6 +25,10 @@ export default function ObligationsPage() {
   return (
     <div>
       <h1 className="fiscal-page-title mb-6 text-3xl font-semibold">Mes obligations fiscales</h1>
+
+      <div className="mb-6">
+        <ListeAcomptesObligatoires nif={utilisateur.identifiant} afficherLienDepot />
+      </div>
 
       <div className="mb-5 flex flex-wrap gap-2">
         {[

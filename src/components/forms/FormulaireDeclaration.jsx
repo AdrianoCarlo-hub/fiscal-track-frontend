@@ -22,7 +22,8 @@ export default function FormulaireDeclaration({ codeImpot, valeurs, onChange }) 
     case 'IRSA':
       return <FormIrsa valeurs={valeurs} onChange={onChange} />;
     case 'ACOMPTE_IR':
-      return <FormAcompte />;
+    case 'ACOMPTE_IS':
+      return <FormAcompte codeImpot={codeImpot} />;
     default:
       return (
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
@@ -50,12 +51,19 @@ function FormIS({ valeurs, maj }) {
           aide="Uniquement si vous êtes adhérent à la CGA." />
       </Section>
 
-      <Section titre="Charges et acomptes">
+      <Section titre="Charges et autres acomptes">
         <Champ label="Charges salariales de l’exercice (Ar)" name="chargesSalariales"
           value={valeurs.chargesSalariales} onChange={(v) => maj('chargesSalariales', v)} />
-        <Champ label="Acomptes déjà versés sur l’IS (Ar)" name="acomptes"
-          value={valeurs.acomptes} onChange={(v) => maj('acomptes', v)}
-          aide="Sommes déjà versées au titre de l’exercice : elles sont déduites du solde." />
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Champ label="Acomptes perçus en douane (Ar)" name="acomptesDouane"
+            value={valeurs.acomptesDouane} onChange={(v) => maj('acomptesDouane', v)}
+            aide="Montant facultatif déjà versé à la douane au titre de cet impôt."
+            erreur={erreurNegatif(valeurs.acomptesDouane)} />
+          <Champ label="Acomptes marchés publics (Ar)" name="acomptesMarchesPublics"
+            value={valeurs.acomptesMarchesPublics} onChange={(v) => maj('acomptesMarchesPublics', v)}
+            aide="Montant facultatif retenu sur les marchés publics."
+            erreur={erreurNegatif(valeurs.acomptesMarchesPublics)} />
+        </div>
       </Section>
 
       <Section titre="Catégorie d’activité">
@@ -119,8 +127,16 @@ function FormIr({ valeurs, onChange, maj }) {
           <Champ label="Déductions extra-comptables (Ar)" name="deductions"
             value={valeurs.deductions} onChange={(v) => maj('deductions', v)} />
         </div>
-        <Champ label="Acomptes déjà versés sur l’IR (Ar)" name="acomptes"
-          value={valeurs.acomptes} onChange={(v) => maj('acomptes', v)} />
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Champ label="Acomptes perçus en douane (Ar)" name="acomptesDouane"
+            value={valeurs.acomptesDouane} onChange={(v) => maj('acomptesDouane', v)}
+            aide="Montant facultatif déjà versé à la douane au titre de cet impôt."
+            erreur={erreurNegatif(valeurs.acomptesDouane)} />
+          <Champ label="Acomptes marchés publics (Ar)" name="acomptesMarchesPublics"
+            value={valeurs.acomptesMarchesPublics} onChange={(v) => maj('acomptesMarchesPublics', v)}
+            aide="Montant facultatif retenu sur les marchés publics."
+            erreur={erreurNegatif(valeurs.acomptesMarchesPublics)} />
+        </div>
       </Section>
 
       <Section titre="Situation du dossier">
@@ -240,16 +256,25 @@ function FormIrsa({ valeurs, onChange }) {
   );
 }
 
-function FormAcompte() {
+function FormAcompte({ codeImpot }) {
+  const impot = codeImpot === 'ACOMPTE_IS' ? 'l’IS' : 'l’IR';
   return (
     <div className="rounded-lg border border-sky-200 bg-sky-50 p-4 text-sm text-sky-800">
       <p className="font-semibold">Aucune donnée à saisir.</p>
       <p className="mt-1">
-        L’acompte provisionnel est égal à 25 % de l’impôt sur le revenu de l’exercice précédent.
-        Le serveur le calcule à partir de votre dernière déclaration d’IR.
+        L’acompte provisionnel est calculé par le serveur à partir de {impot} de l’exercice précédent
+        (ou du forfait de démarrage). Le montant, la base et le taux s’affichent en lecture seule ci-dessous.
       </p>
     </div>
   );
+}
+
+function erreurNegatif(valeur) {
+  if (valeur === '' || valeur === null || valeur === undefined) return '';
+  const nombre = Number(String(valeur).replace(/\s/g, '').replace(',', '.'));
+  if (!Number.isFinite(nombre)) return 'Saisissez un montant valide.';
+  if (nombre < 0) return 'Le montant ne peut pas être négatif.';
+  return '';
 }
 
 function Section({ titre, children }) {
@@ -263,7 +288,7 @@ function Section({ titre, children }) {
   );
 }
 
-function Champ({ label, name, value, onChange, required, aide, type = 'number', min = '0', step }) {
+function Champ({ label, name, value, onChange, required, aide, type = 'number', min = '0', step, erreur }) {
   const estNombre = type === 'number';
   return (
     <div>
@@ -280,6 +305,7 @@ function Champ({ label, name, value, onChange, required, aide, type = 'number', 
         className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none text-sm"
       />
       {aide && <p className="mt-1 text-xs text-slate-500">{aide}</p>}
+      {erreur && <p className="mt-1 text-xs font-medium text-red-600">{erreur}</p>}
     </div>
   );
 }

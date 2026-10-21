@@ -10,7 +10,8 @@ export const VALEURS_INITIALES_PAR_TYPE = {
     adherentCga: false,
     achatsConformes: '',
     chargesSalariales: '',
-    acomptes: '',
+    acomptesDouane: '',
+    acomptesMarchesPublics: '',
     categorieActiviteIs: '',
   },
   TVA: {
@@ -26,7 +27,8 @@ export const VALEURS_INITIALES_PAR_TYPE = {
     chargesDeductibles: '',
     reintegrations: '',
     deductions: '',
-    acomptes: '',
+    acomptesDouane: '',
+    acomptesMarchesPublics: '',
     categorieActivite: '',
     moisActifs: '',
     deficits: [],
@@ -39,6 +41,7 @@ export const VALEURS_INITIALES_PAR_TYPE = {
     }],
   },
   ACOMPTE_IR: {},
+  ACOMPTE_IS: {},
 };
 
 export function valeursInitiales(codeImpot) {
@@ -78,7 +81,8 @@ export function champsSaisis(codeImpot, valeurs) {
         adherentCga: !!v.adherentCga,
         achatsConformes: nombre(v.achatsConformes),
         chargesSalariales: nombre(v.chargesSalariales),
-        acomptes: nombre(v.acomptes),
+        acomptesDouane: nombre(v.acomptesDouane),
+        acomptesMarchesPublics: nombre(v.acomptesMarchesPublics),
         categorieActiviteIs: v.categorieActiviteIs || null,
       };
     case 'TVA':
@@ -96,7 +100,8 @@ export function champsSaisis(codeImpot, valeurs) {
         chargesDeductibles: nombre(v.chargesDeductibles),
         reintegrations: nombre(v.reintegrations),
         deductions: nombre(v.deductions),
-        acomptes: nombre(v.acomptes),
+        acomptesDouane: nombre(v.acomptesDouane),
+        acomptesMarchesPublics: nombre(v.acomptesMarchesPublics),
         categorieActivite: v.categorieActivite || null,
         moisActifs: nombre(v.moisActifs),
         deficits: (v.deficits || []).map((d) => ({
@@ -147,4 +152,33 @@ export function pretPourPrevisualisation(codeImpot, valeurs) {
     default:
       return true;
   }
+}
+
+
+/**
+ * Impot du avant deduction des acomptes et du credit, a partir du resultat
+ * du serveur. IR : MAX(theorique, minimum). IS : MAX(theorique - reductions,
+ * plancher).
+ */
+export function impotAvantAcomptes(resultat, codeImpot) {
+  if (!resultat) return 0;
+  const nombre = (valeur) => {
+    const n = Number(valeur);
+    return Number.isFinite(n) ? n : 0;
+  };
+  const theorique = nombre(resultat.montantBrut);
+  const minimum = nombre(resultat.montantMinimum);
+  if (codeImpot === 'IS') {
+    return Math.max(theorique - nombre(resultat.reductions), minimum);
+  }
+  return Math.max(theorique, minimum);
+}
+
+/** Acomptes verses (paiements + douane + marches publics) depuis detailAcomptes. */
+export function acomptesVerses(detail) {
+  const nombre = (valeur) => {
+    const n = Number(valeur);
+    return Number.isFinite(n) ? n : 0;
+  };
+  return nombre(detail?.acomptesPayes) + nombre(detail?.autresAcomptes);
 }
