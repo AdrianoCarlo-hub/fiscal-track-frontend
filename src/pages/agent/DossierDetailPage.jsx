@@ -68,13 +68,15 @@ export default function DossierDetailPage() {
             </button>
           </div>
         </div>
-        <div className="grid grid-cols-3 gap-4 mt-4 text-sm">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4 text-sm">
           <Info label="Forme juridique" value={contribuable.formeJuridique} />
           <Info label="Regime" value={contribuable.regimeImposition} />
           <Info label="Obligation comptable" value={contribuable.obligationComptable} />
+          <Info label="Statut" value={contribuable.statutActivite} />
+          <Info label="Adresse" value={contribuable.adresseContribuable} />
+          <Info label="Commune" value={contribuable.communeContribuable} />
           <Info label="Email" value={contribuable.emailContribuable} />
           <Info label="Telephone" value={contribuable.telephoneContribuable} />
-          <Info label="Statut" value={contribuable.statutActivite} />
         </div>
       </div>
 

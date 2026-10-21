@@ -67,11 +67,12 @@ export default function DeposerDeclarationPage() {
     if (timerRef.current) clearTimeout(timerRef.current);
     timerRef.current = setTimeout(async () => {
       setChargementPreview(true);
+      // On memorise la saisie exacte qui a produit le resultat : un montant
+      // calcule sur d'anciennes valeurs ne doit ni s'afficher ni etre envoye.
+      const corps = construireCorps(obligation.codeImpot, idObligation, valeurs, 0);
       try {
-        const data = await declarationService.previsualiser(
-          construireCorps(obligation.codeImpot, idObligation, valeurs, 0),
-        );
-        setPreview(data);
+        const data = await declarationService.previsualiser(corps);
+        setPreview({ data, corps: JSON.stringify(corps) });
         setErreurPreview('');
       } catch (err) {
         setPreview(null);
@@ -86,12 +87,14 @@ export default function DeposerDeclarationPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!preview?.disponible || !pretPourPrevisualisation(obligation.codeImpot, valeurs)) return;
+    if (!preview?.data?.disponible || !pretPourPrevisualisation(obligation.codeImpot, valeurs)) return;
+    const corpsCourant = JSON.stringify(construireCorps(obligation.codeImpot, idObligation, valeurs, 0));
+    if (preview.corps !== corpsCourant) return;
     setErreur('');
     setEnvoi(true);
     try {
       await declarationService.deposer(construireCorps(
-        obligation.codeImpot, idObligation, valeurs, preview.impotRetenu,
+        obligation.codeImpot, idObligation, valeurs, preview.data.impotRetenu,
       ));
       navigate('/contribuable/declarations');
     } catch (err) {
@@ -137,9 +140,12 @@ export default function DeposerDeclarationPage() {
 
   const codeImpot = obligation.codeImpot;
   const pret = pretPourPrevisualisation(codeImpot, valeurs);
+  const corpsActuel = JSON.stringify(construireCorps(codeImpot, idObligation, valeurs, 0));
   // Le resultat ne s'affiche que si la saisie correspond toujours au calcul.
-  const previewAffiche = pret ? preview : null;
+  const previewAffiche = pret && preview?.corps === corpsActuel ? preview.data : null;
   const impotRetenu = previewAffiche?.disponible ? previewAffiche.impotRetenu : null;
+  const creditFiscal = previewAffiche?.disponible ? Number(previewAffiche.creditFiscal || 0) : 0;
+  const aCredit = creditFiscal > 0;
 
   return (
     <div className="max-w-3xl space-y-6">
@@ -174,24 +180,41 @@ export default function DeposerDeclarationPage() {
             <Calculator className="h-4 w-4 text-primary" /> Impôt calculé par le serveur
           </div>
 
-          <div>
-            <label htmlFor="impot-calcule" className="block text-sm font-medium text-slate-700 mb-1">
-              Impôt principal (Ar)
-            </label>
-            <input id="impot-calcule" type="text" readOnly
-              value={impotRetenu !== null ? formatMontant(impotRetenu) : ''}
-              placeholder={chargementPreview ? 'Calcul en cours…' : 'Renseignez les champs ci-dessus'}
-              className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-100 text-slate-700 cursor-not-allowed outline-none text-sm" />
-            <p className="mt-1 text-xs text-slate-500">
-              Ce montant est calculé par le serveur à partir des règles fiscales en vigueur :
-              il n’est pas modifiable.
-            </p>
+          <div className={aCredit ? 'grid gap-4 sm:grid-cols-2' : ''}>
+            <div>
+              <label htmlFor="impot-calcule" className="block text-sm font-medium text-slate-700 mb-1">
+                Impôt principal (Ar)
+              </label>
+              <input id="impot-calcule" type="text" readOnly
+                value={impotRetenu !== null ? formatMontant(impotRetenu) : ''}
+                placeholder={chargementPreview ? 'Calcul en cours…' : 'Renseignez les champs ci-dessus'}
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-100 text-slate-700 cursor-not-allowed outline-none text-sm" />
+              <p className="mt-1 text-xs text-slate-500">
+                Ce montant est calculé par le serveur à partir des règles fiscales en vigueur :
+                il n’est pas modifiable.
+              </p>
+            </div>
+
+            {aCredit && (
+              <div className="rounded-lg border border-emerald-300 bg-emerald-50 p-3">
+                <p className="text-xs font-medium uppercase tracking-wide text-emerald-700">
+                  {codeImpot === 'TVA' ? 'Crédit de TVA à reporter' : 'Crédit fiscal'} (Ar)
+                </p>
+                <p className="mt-1 text-xl font-bold text-emerald-800">
+                  {formatMontant(creditFiscal)}
+                </p>
+                <p className="mt-1 text-xs text-emerald-700">
+                  Votre {codeImpot === 'TVA' ? 'TVA nette est négative' : 'crédit est positif'} :
+                  vous n’avez rien à payer. Ce crédit est reporté sur votre prochaine déclaration.
+                </p>
+              </div>
+            )}
           </div>
 
           {previewAffiche?.explication && (
             <p className="text-xs text-slate-600 flex gap-2">
               <Info className="h-4 w-4 shrink-0 text-slate-400" />
-              <span>{preview.explication}</span>
+              <span>{previewAffiche.explication}</span>
             </p>
           )}
 

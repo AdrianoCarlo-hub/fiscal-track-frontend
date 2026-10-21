@@ -24,6 +24,19 @@ export const CATEGORIES_ACTIVITE = [
   'EDUCATION', 'SANTE', 'ASSOCIE_GERANT_SARL', 'OSBL', 'AUTRE',
 ];
 
+/**
+ * Categories IS telles qu'attendues par le moteur de calcul (CDI 01.02.05)
+ * pour appliquer le minimum categoriel. Les codes sont envoyes tels quels au
+ * backend (aucun libelle).
+ */
+export const CATEGORIES_ACTIVITE_IS = [
+  'AGRICOLE', 'ELEVEUR',
+  'ARTISAN', 'GARGOTIER', 'PETIT_COMMERCANT',
+  'COMMERCANT', 'HOTELIER', 'PRESTATAIRE',
+  'PROFESSION_LIBERALE', 'ACTIVITES_MULTIPLES',
+];
+
+
 export function libelleCategorie(categorie) {
   if (!categorie) return '';
   const mots = categorie.split('_');

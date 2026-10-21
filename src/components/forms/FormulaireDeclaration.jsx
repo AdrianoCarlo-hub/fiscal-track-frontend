@@ -1,5 +1,5 @@
 import { Plus, Trash2 } from 'lucide-react';
-import { CATEGORIES_ACTIVITE, libelleCategorie } from '../../utils/fiscalConstants';
+import { CATEGORIES_ACTIVITE, CATEGORIES_ACTIVITE_IS, libelleCategorie } from '../../utils/fiscalConstants';
 
 /**
  * Formulaire de declaration adapte au type d'impot de l'obligation.
@@ -60,7 +60,8 @@ function FormIS({ valeurs, maj }) {
 
       <Section titre="Catégorie d’activité">
         <SelecteurCategorie value={valeurs.categorieActiviteIs}
-          onChange={(v) => maj('categorieActiviteIs', v)} />
+          onChange={(v) => maj('categorieActiviteIs', v)}
+          categories={CATEGORIES_ACTIVITE_IS} />
       </Section>
     </div>
   );
@@ -296,7 +297,7 @@ function Case({ label, checked, onChange, aide }) {
   );
 }
 
-function SelecteurCategorie({ value, onChange }) {
+function SelecteurCategorie({ value, onChange, categories = CATEGORIES_ACTIVITE }) {
   return (
     <div>
       <label htmlFor="categorie-activite" className="block text-sm font-medium text-slate-700 mb-1">
@@ -305,7 +306,7 @@ function SelecteurCategorie({ value, onChange }) {
       <select id="categorie-activite" value={value || ''} onChange={(e) => onChange(e.target.value)}
         className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-primary/30 outline-none text-sm">
         <option value="">— Renseignée dans votre dossier —</option>
-        {CATEGORIES_ACTIVITE.map((c) => (
+        {categories.map((c) => (
           <option key={c} value={c}>{libelleCategorie(c)}</option>
         ))}
       </select>

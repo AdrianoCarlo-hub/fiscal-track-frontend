@@ -46,10 +46,21 @@ export function valeursInitiales(codeImpot) {
   return JSON.parse(JSON.stringify(modele));
 }
 
+/**
+ * Convertit une saisie en nombre sans perte de precision.
+ * Accepte les espaces (dont insecables) comme separateur de milliers et la
+ * virgule comme separateur decimal. Le resultat est arrondi au centime, ce
+ * qui garantit qu'un montant entier saisi (ex. 5000000) est transmis tel quel.
+ */
 function nombre(valeur) {
   if (valeur === '' || valeur === null || valeur === undefined) return null;
-  const n = Number(valeur);
-  return Number.isNaN(n) ? null : n;
+  const texte = String(valeur)
+    .replace(/[\s\u00a0\u202f]/g, '')
+    .replace(',', '.');
+  if (!/^[+-]?(\d+(\.\d*)?|\.\d+)$/.test(texte)) return null;
+  const n = Number(texte);
+  if (!Number.isFinite(n)) return null;
+  return Math.round(n * 100) / 100;
 }
 
 function nombreRequis(valeur) {
@@ -122,17 +133,17 @@ export function construireCorps(codeImpot, idObligation, valeurs, impotCalcule) 
 /** Vrai si tous les champs obligatoires du type sont renseignes. */
 export function pretPourPrevisualisation(codeImpot, valeurs) {
   const v = valeurs || {};
-  const renseigne = (x) => x !== '' && x !== null && x !== undefined && !Number.isNaN(Number(x));
+  const renseigne = (x) => nombre(x) !== null;
   switch (codeImpot) {
     case 'IS':
-      return renseigne(v.caBrut) && Number(v.caBrut) >= 0;
+      return renseigne(v.caBrut) && nombre(v.caBrut) >= 0;
     case 'TVA':
-      return renseigne(v.caLocal) && Number(v.caLocal) >= 0;
+      return renseigne(v.caLocal) && nombre(v.caLocal) >= 0;
     case 'IR':
-      return renseigne(v.caHT) && Number(v.caHT) >= 0;
+      return renseigne(v.caHT) && nombre(v.caHT) >= 0;
     case 'IRSA':
       return (v.salaries || []).length > 0
-        && v.salaries.every((l) => renseigne(l.salaireBrut) && Number(l.salaireBrut) >= 0);
+        && v.salaries.every((l) => renseigne(l.salaireBrut) && nombre(l.salaireBrut) >= 0);
     default:
       return true;
   }
