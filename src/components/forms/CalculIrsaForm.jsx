@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import calculFiscalService from '../../services/calculFiscalService';
+import { messageErreur } from '../../services/api';
 
 export default function CalculIrsaForm({ onResultat, onErreur }) {
   const [form, setForm] = useState({
@@ -32,7 +33,7 @@ export default function CalculIrsaForm({ onResultat, onErreur }) {
       const resultat = await calculFiscalService.calculerIrsa(data);
       onResultat(resultat);
     } catch (err) {
-      onErreur(err.response?.data?.message || 'Erreur lors du calcul');
+      onErreur(messageErreur(err) || 'Erreur lors du calcul.');
     } finally {
       setChargement(false);
     }

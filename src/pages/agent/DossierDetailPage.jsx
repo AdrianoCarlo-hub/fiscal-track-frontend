@@ -1,204 +1,306 @@
-import { useCallback, useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useState } from 'react';
+import { Link, useParams } from 'react-router-dom';
+import { ArrowLeft, FilePlus2, Pencil } from 'lucide-react';
+import { useAuth } from '../../context/useAuth';
+import { peut } from '../../auth/permissions';
 import contribuableService from '../../services/contribuableService';
 import obligationService from '../../services/obligationService';
 import compteCourantService from '../../services/compteCourantService';
+import useApiData, { useListView } from '../../hooks/useApiData';
+import PageHeader from '../../components/ui/PageHeader';
+import SectionCard from '../../components/ui/SectionCard';
+import DetailList from '../../components/ui/DetailList';
+import DataTable, { ListToolbar } from '../../components/common/DataTable';
+import StatutBadge from '../../components/ui/StatutBadge';
+import Tabs from '../../components/ui/Tabs';
+import Button from '../../components/ui/Button';
+import LoadingState from '../../components/ui/LoadingState';
+import ErrorState from '../../components/ui/ErrorState';
 import ObligationForm from '../../components/forms/ObligationForm';
 import ContribuableForm from '../../components/forms/ContribuableForm';
 import ListeAcomptesObligatoires from '../../components/acomptes/ListeAcomptesObligatoires';
-import { formatMontant } from '../../utils/formatUtils';
-import { libelleStatutRecouvrement } from '../../utils/formatUtils';
-import { libelleImpot, libelleStatutDeclaration } from '../../utils/fiscalConstants';
+import { formatDate, formatMontant } from '../../utils/formatUtils';
+import { libelle } from '../../utils/libelles';
+import { libelleImpot } from '../../utils/fiscalConstants';
+
+async function chargerDossier(nif) {
+  const [contribuable, obligations, comptes] = await Promise.all([
+    contribuableService.parNif(nif),
+    obligationService.parContribuable(nif),
+    compteCourantService.parContribuable(nif),
+  ]);
+  return {
+    contribuable,
+    obligations: Array.isArray(obligations) ? obligations : [],
+    comptes: Array.isArray(comptes) ? comptes : [],
+  };
+}
 
 export default function DossierDetailPage() {
   const { nif } = useParams();
-  const navigate = useNavigate();
-  const [contribuable, setContribuable] = useState(null);
-  const [obligations, setObligations] = useState([]);
-  const [comptes, setComptes] = useState([]);
-  const [chargement, setChargement] = useState(true);
-  const [modalObligationOuvert, setModalObligationOuvert] = useState(false);
-  const [modalModifOuvert, setModalModifOuvert] = useState(false);
-  const [ongletActif, setOngletActif] = useState('OBLIGATIONS');
+  const { utilisateur } = useAuth();
+  const [onglet, setOnglet] = useState('OBLIGATIONS');
+  const [modalObligation, setModalObligation] = useState(false);
+  const [modalModification, setModalModification] = useState(false);
 
-  const charger = useCallback(() => {
-    setChargement(true);
-    Promise.all([
-      contribuableService.parNif(nif),
-      obligationService.parContribuable(nif),
-      compteCourantService.parContribuable(nif),
-    ])
-      .then(([c, o, cc]) => {
-        setContribuable(c);
-        setObligations(o);
-        setComptes(cc);
-      })
-      .catch(() => {})
-      .finally(() => setChargement(false));
-  }, [nif]);
+  const { data, chargement, erreur, recharger } = useApiData(
+    () => chargerDossier(nif),
+    [nif],
+  );
 
-  useEffect(() => {
-    Promise.resolve().then(charger);
-  }, [nif, charger]);
+  const obligations = data?.obligations || [];
+  const comptes = data?.comptes || [];
+  const vueObligations = useListView(obligations, 10);
+  const vueComptes = useListView(comptes, 10);
 
-  if (chargement) return <p>Chargement.....</p>;
-  if (!contribuable) return <p>Contribuable introuvable</p>;
+  if (chargement) {
+    return (
+      <div>
+        <PageHeader titre="Dossier contribuable" fil={[{ libelle: 'Dossiers' }]} />
+        <LoadingState lignes={5} />
+      </div>
+    );
+  }
+
+  if (erreur) {
+    return (
+      <div>
+        <PageHeader titre="Dossier contribuable" fil={[{ libelle: 'Dossiers' }]} />
+        <ErrorState erreur={erreur} onReessayer={recharger} />
+      </div>
+    );
+  }
+
+  const contribuable = data.contribuable;
+
+  const colonnesObligations = [
+    {
+      cle: 'codeImpot',
+      label: 'Impôt',
+      render: (obligation) => (
+        <div>
+          <p className="font-medium text-slate-800">{libelleImpot(obligation.codeImpot)}</p>
+          <p className="text-xs text-slate-500">Période {obligation.periodeFiscale}</p>
+        </div>
+      ),
+    },
+    {
+      cle: 'dateLimiteReelle',
+      label: 'Échéance',
+      render: (obligation) => formatDate(obligation.dateLimiteReelle),
+    },
+    {
+      cle: 'statutDeclaration',
+      label: 'Statut',
+      render: (obligation) => (
+        <StatutBadge famille="statutDeclaration" code={obligation.statutDeclaration} />
+      ),
+    },
+    {
+      cle: 'depot',
+      label: 'Déposée le',
+      render: (obligation) =>
+        obligation.dateDepotEffectif ? formatDate(obligation.dateDepotEffectif) : '—',
+    },
+  ];
+
+  const colonnesComptes = [
+    {
+      cle: 'idCompte',
+      label: 'Compte',
+      render: (compte) => (
+        <div>
+          <p className="font-medium text-slate-800">Compte n°{compte.idCompte}</p>
+          <p className="text-xs text-slate-500">Déclaration n°{compte.idDeclaration}</p>
+        </div>
+      ),
+    },
+    {
+      cle: 'montantTotalDu',
+      label: 'Total dû',
+      align: 'right',
+      render: (compte) => formatMontant(compte.montantTotalDu),
+    },
+    {
+      cle: 'montantPaye',
+      label: 'Payé',
+      align: 'right',
+      render: (compte) => (
+        <span className="fiscal-money text-success">{formatMontant(compte.montantPaye)}</span>
+      ),
+    },
+    {
+      cle: 'resteARecouvrer',
+      label: 'Reste',
+      align: 'right',
+      render: (compte) => (
+        <span
+          className={`fiscal-money font-semibold ${
+            Number(compte.resteARecouvrer || 0) > 0 ? 'text-danger' : 'text-slate-700'
+          }`}
+        >
+          {formatMontant(compte.resteARecouvrer)}
+        </span>
+      ),
+    },
+    {
+      cle: 'statutRecouvrement',
+      label: 'Statut',
+      render: (compte) => (
+        <StatutBadge famille="statutRecouvrement" code={compte.statutRecouvrement} />
+      ),
+    },
+  ];
 
   return (
     <div>
-      <button onClick={() => navigate('/agent/dossiers')}
-        className="text-sky-600 hover:underline mb-4 text-sm">← Retour</button>
-
-      <div className="bg-white p-6 rounded-xl shadow-sm mb-6">
-        <div className="flex justify-between items-start">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-800">{contribuable.raisonSociale}</h1>
-            <p className="text-slate-500 font-mono">{contribuable.nif}</p>
-          </div>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setModalModifOuvert(true)}
-              className="bg-slate-600 hover:bg-slate-700 text-white px-4 py-2 rounded-lg text-sm"
-            >
-              Modifier
-            </button>
-            <button
-              onClick={() => setModalObligationOuvert(true)}
-              className="bg-sky-500 hover:bg-sky-600 text-white px-4 py-2 rounded-lg text-sm"
-            >
-              + Generer une obligation
-            </button>
-          </div>
-        </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4 text-sm">
-          <Info label="Forme juridique" value={contribuable.formeJuridique} />
-          <Info label="Regime" value={contribuable.regimeImposition} />
-          <Info label="Obligation comptable" value={contribuable.obligationComptable} />
-          <Info label="Statut" value={contribuable.statutActivite} />
-          <Info label="Adresse" value={contribuable.adresseContribuable} />
-          <Info label="Commune" value={contribuable.communeContribuable} />
-          <Info label="Email" value={contribuable.emailContribuable} />
-          <Info label="Telephone" value={contribuable.telephoneContribuable} />
-        </div>
+      <div className="mb-4">
+        <Link
+          to="/agent/dossiers"
+          className="inline-flex items-center gap-2 text-sm text-slate-500 hover:text-primary"
+        >
+          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+          Retour aux dossiers
+        </Link>
       </div>
 
-      <div className="mb-5 flex flex-wrap gap-2" role="tablist" aria-label="Sections du dossier">
-        {[
-          ['OBLIGATIONS', `Obligations (${obligations.length})`],
-          ['COMPTE', `Compte courant (${comptes.length})`],
-          ['ACOMPTES', 'Acomptes'],
-        ].map(([code, libelle]) => (
-          <button key={code} type="button" role="tab" aria-selected={ongletActif === code}
-            onClick={() => setOngletActif(code)}
-            className={`rounded-lg px-4 py-2 text-sm font-medium transition ${
-              ongletActif === code
-                ? 'bg-primary text-white'
-                : 'border border-slate-300 bg-white text-slate-600 hover:bg-slate-50'
-            }`}>
-            {libelle}
-          </button>
-        ))}
-      </div>
+      <PageHeader
+        titre={contribuable.raisonSociale}
+        description={`NIF ${contribuable.nif}`}
+        fil={[
+          { libelle: 'Dossiers contribuables', lien: '/agent/dossiers' },
+          { libelle: contribuable.nif },
+        ]}
+        actions={
+          <>
+            {peut(utilisateur?.role, 'contribuable.gerer') && (
+              <Button variant="ghost" onClick={() => setModalModification(true)}>
+                <Pencil className="h-4 w-4" aria-hidden="true" />
+                Modifier
+              </Button>
+            )}
+            {peut(utilisateur?.role, 'obligation.generer') && (
+              <Button onClick={() => setModalObligation(true)}>
+                <FilePlus2 className="h-4 w-4" aria-hidden="true" />
+                Générer une obligation
+              </Button>
+            )}
+          </>
+        }
+      />
 
-      {ongletActif === 'OBLIGATIONS' && <>
-      <h2 className="text-xl font-bold text-slate-800 mb-3">Obligations ({obligations.length})</h2>
-      <div className="bg-white rounded-xl shadow-sm overflow-hidden mb-6">
-        <table className="w-full">
-          <thead className="bg-slate-100 text-slate-600 text-sm">
-            <tr>
-              <th className="text-left px-4 py-3">Impot</th>
-              <th className="text-left px-4 py-3">Periode</th>
-              <th className="text-left px-4 py-3">Echeance</th>
-              <th className="text-left px-4 py-3">Statut</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {obligations.map((o) => (
-              <tr key={o.idObligationFiscale}>
-                <td className="px-4 py-3">{libelleImpot(o.codeImpot)}</td>
-                <td className="px-4 py-3">{o.periodeFiscale}</td>
-                <td className="px-4 py-3 text-sm">{o.dateLimiteReelle}</td>
-                <td className="px-4 py-3 text-sm">
-                  <span className={`text-xs px-2 py-1 rounded ${
-                    o.statutDeclaration === 'DEPOSE' ? 'bg-green-100 text-green-700' :
-                    o.statutDeclaration === 'RETARD' ? 'bg-red-100 text-red-700' :
-                    'bg-yellow-100 text-yellow-700'
-                  }`}>
-                    {libelleStatutDeclaration(o.statutDeclaration)}
-                  </span>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      </>}
-
-      {ongletActif === 'COMPTE' && <>
-      <h2 className="text-xl font-bold text-slate-800 mb-3">Compte courant ({comptes.length})</h2>
-      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-        <table className="w-full">
-          <thead className="bg-slate-100 text-slate-600 text-sm">
-            <tr>
-              <th className="text-right px-4 py-3">Total du</th>
-              <th className="text-right px-4 py-3">Paye</th>
-              <th className="text-right px-4 py-3">Reste</th>
-              <th className="text-left px-4 py-3">Statut</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {comptes.map((c) => (
-              <tr key={c.idCompte}>
-                <td className="px-4 py-3 text-right">{formatMontant(c.montantTotalDu)}</td>
-                <td className="px-4 py-3 text-right text-green-600">{formatMontant(c.montantPaye)}</td>
-                <td className="px-4 py-3 text-right font-bold text-red-600">{formatMontant(c.resteARecouvrer)}</td>
-                <td className="px-4 py-3 text-sm">{libelleStatutRecouvrement(c.statutRecouvrement)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      </>}
-
-      {ongletActif === 'ACOMPTES' && (
-        <ListeAcomptesObligatoires
-          nif={nif}
-          titre={`Acomptes obligatoires de ${contribuable.raisonSociale}`}
-          description="Acomptes IR et IS de l’exercice en cours, avec le total restant à payer."
+      <SectionCard className="mb-5">
+        <DetailList
+          colonnes={3}
+          elements={[
+            { libelle: 'Forme juridique', valeur: libelle('formeJuridique', contribuable.formeJuridique) },
+            { libelle: 'Régime', valeur: libelle('regimeImposition', contribuable.regimeImposition) },
+            {
+              libelle: 'Obligation comptable',
+              valeur: libelle('obligationComptable', contribuable.obligationComptable),
+            },
+            { libelle: 'Statut', valeur: <StatutBadge famille="statutActivite" code={contribuable.statutActivite} /> },
+            { libelle: 'Date d’immatriculation', valeur: formatDate(contribuable.dateImmatriculation) },
+            { libelle: 'Catégorie d’activité', valeur: libelle('categorieActivite', contribuable.categorieActivite) },
+            { libelle: 'Adresse', valeur: contribuable.adresseContribuable },
+            { libelle: 'Commune', valeur: contribuable.communeContribuable },
+            { libelle: 'E-mail', valeur: contribuable.emailContribuable },
+            { libelle: 'Téléphone', valeur: contribuable.telephoneContribuable },
+            { libelle: 'Dirigeant', valeur: [contribuable.prenomDirigeant, contribuable.nomDirigeant].filter(Boolean).join(' ') || null },
+            { libelle: 'CIN du dirigeant', valeur: contribuable.cinDirigeant },
+          ]}
         />
-      )}
+      </SectionCard>
 
-      {modalObligationOuvert && (
+      <SectionCard padding={false}>
+        <div className="px-5 pt-3">
+          <Tabs
+            actif={onglet}
+            onChange={setOnglet}
+            onglets={[
+              { cle: 'OBLIGATIONS', libelle: 'Obligations', compteur: obligations.length },
+              { cle: 'COMPTES', libelle: 'Comptes courants', compteur: comptes.length },
+              { cle: 'ACOMPTES', libelle: 'Acomptes' },
+            ]}
+          />
+        </div>
+
+        <div className="p-5">
+          {onglet === 'OBLIGATIONS' && (
+            <>
+              <ListToolbar
+                value={vueObligations.query}
+                onChange={vueObligations.setQuery}
+                placeholder="Rechercher par impôt, période ou statut…"
+                count={vueObligations.filteredCount}
+              />
+              <DataTable
+                colonnes={colonnesObligations}
+                donnees={vueObligations.items}
+                pagination={vueObligations.pagination}
+                onPageChange={vueObligations.setPage}
+                rechercheActive={!!vueObligations.query}
+                onEffacerRecherche={vueObligations.clear}
+                titreVide="Aucune obligation"
+                descriptionVide="Aucune obligation fiscale n’a encore été générée pour ce dossier."
+                cleLigne={(obligation) => obligation.idObligationFiscale}
+              />
+            </>
+          )}
+
+          {onglet === 'COMPTES' && (
+            <>
+              <ListToolbar
+                value={vueComptes.query}
+                onChange={vueComptes.setQuery}
+                placeholder="Rechercher par compte ou statut…"
+                count={vueComptes.filteredCount}
+              />
+              <DataTable
+                colonnes={colonnesComptes}
+                donnees={vueComptes.items}
+                pagination={vueComptes.pagination}
+                onPageChange={vueComptes.setPage}
+                rechercheActive={!!vueComptes.query}
+                onEffacerRecherche={vueComptes.clear}
+                titreVide="Aucun compte courant"
+                descriptionVide="Aucun compte courant fiscal n’est ouvert pour ce dossier."
+                cleLigne={(compte) => compte.idCompte}
+              />
+            </>
+          )}
+
+          {onglet === 'ACOMPTES' && (
+            <ListeAcomptesObligatoires
+              nif={nif}
+              titre={`Acomptes obligatoires de ${contribuable.raisonSociale}`}
+              description="Acomptes IR et IS de l’exercice en cours, avec le total restant à payer."
+            />
+          )}
+        </div>
+      </SectionCard>
+
+      {modalObligation && (
         <ObligationForm
           nif={nif}
-          onClose={() => setModalObligationOuvert(false)}
+          onClose={() => setModalObligation(false)}
           onSuccess={() => {
-            setModalObligationOuvert(false);
-            charger();
+            setModalObligation(false);
+            recharger();
           }}
         />
       )}
 
-      {modalModifOuvert && (
+      {modalModification && (
         <ContribuableForm
           contribuable={contribuable}
-          onClose={() => setModalModifOuvert(false)}
+          onClose={() => setModalModification(false)}
           onSuccess={() => {
-            setModalModifOuvert(false);
-            charger();
+            setModalModification(false);
+            recharger();
           }}
         />
       )}
-    </div>
-  );
-}
-
-function Info({ label, value }) {
-  return (
-    <div>
-      <p className="text-slate-500 text-xs uppercase">{label}</p>
-      <p className="font-medium text-slate-800 mt-1">{value || '-'}</p>
     </div>
   );
 }

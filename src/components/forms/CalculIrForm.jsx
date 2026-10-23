@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import calculFiscalService from '../../services/calculFiscalService';
+import { messageErreur } from '../../services/api';
 import { formatMontant } from '../../utils/formatUtils';
 
 const CATEGORIES = [
@@ -52,7 +53,7 @@ export default function CalculIrForm({ onResultat, onErreur }) {
       const resultat = await calculFiscalService.calculerIr(data);
       onResultat(resultat);
     } catch (err) {
-      onErreur(err.response?.data?.message || 'Erreur lors du calcul');
+      onErreur(messageErreur(err) || 'Erreur lors du calcul.');
     } finally {
       setChargement(false);
     }

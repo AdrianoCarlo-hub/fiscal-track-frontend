@@ -1,108 +1,169 @@
 ﻿import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { FileSearch } from 'lucide-react';
+import { FileSearch, Plus } from 'lucide-react';
+import { useAuth } from '../../context/useAuth';
+import { peut } from '../../auth/permissions';
 import contribuableService from '../../services/contribuableService';
+import useApiData from '../../hooks/useApiData';
+import { useToast } from '../../context/notificationContext';
+import PageHeader from '../../components/ui/PageHeader';
+import SectionCard from '../../components/ui/SectionCard';
 import DataTable, { ListToolbar } from '../../components/common/DataTable';
-import { useApiData } from '../../hooks/useApiData';
-import StatusBadge from '../../components/ui/StatusBadge';
-import Toast from '../../components/ui/Toast';
+import Button from '../../components/ui/Button';
+import StatutBadge from '../../components/ui/StatutBadge';
 import NouveauContribuableModal from '../../components/common/NouveauContribuableModal';
+import { libelle } from '../../utils/libelles';
 
 export default function DossiersPage() {
+  const { utilisateur } = useAuth();
+  const { notifier } = useToast();
   const [page, setPage] = useState(0);
   const [recherche, setRecherche] = useState('');
-  const [modalCreationOuvert, setModalCreationOuvert] = useState(false);
+  const [creationOuverte, setCreationOuverte] = useState(false);
   const [rafraichir, setRafraichir] = useState(0);
-  const [toast, setToast] = useState(null);
 
-  const { data, chargement, erreur } = useApiData(
-    () => recherche.trim() ? contribuableService.rechercherPagine(recherche.trim(), page, 5) : contribuableService.listerPagine(page, 5),
-    [page, recherche, rafraichir]
+  const { data, chargement, erreur, recharger } = useApiData(
+    () =>
+      recherche.trim()
+        ? contribuableService.rechercherPagine(recherche.trim(), page, 10)
+        : contribuableService.listerPagine(page, 10),
+    [page, recherche, rafraichir],
   );
 
+  const modifierRecherche = (valeur) => {
+    setRecherche(valeur);
+    setPage(0);
+  };
+
+  const apresCreation = () => {
+    setCreationOuverte(false);
+    setRafraichir((valeur) => valeur + 1);
+    notifier({
+      variante: 'succes',
+      titre: 'Dossier créé',
+      message: 'Le nouveau contribuable a bien été enregistré.',
+    });
+  };
+
   const colonnes = [
-    { cle: 'nif', label: 'NIF', render: (c) => <span className="font-mono text-sm font-semibold">{c.nif}</span> },
-    { cle: 'raisonSociale', label: 'Raison sociale' },
-    { cle: 'formeJuridique', label: 'Forme' },
-    { cle: 'regimeImposition', label: 'Regime' },
+    {
+      cle: 'nif',
+      label: 'NIF',
+      render: (contribuable) => (
+        <span className="font-mono text-sm font-semibold text-slate-800">{contribuable.nif}</span>
+      ),
+    },
+    {
+      cle: 'raisonSociale',
+      label: 'Raison sociale',
+      render: (contribuable) => (
+        <div>
+          <p className="font-medium text-slate-800">{contribuable.raisonSociale}</p>
+          <p className="text-xs text-slate-500">
+            {contribuable.communeContribuable || 'Commune non renseignée'}
+          </p>
+        </div>
+      ),
+    },
+    {
+      cle: 'formeJuridique',
+      label: 'Forme',
+      render: (contribuable) => libelle('formeJuridique', contribuable.formeJuridique),
+    },
+    {
+      cle: 'regimeImposition',
+      label: 'Régime',
+      render: (contribuable) => libelle('regimeImposition', contribuable.regimeImposition),
+    },
     {
       cle: 'statutActivite',
       label: 'Statut',
-      render: (c) => {
-        const variant = c.statutActivite === 'ACTIF' ? 'success' : c.statutActivite === 'VEILLEUSE' ? 'warning' : 'default';
-        return <StatusBadge variant={variant}>{c.statutActivite}</StatusBadge>;
-      },
+      render: (contribuable) => (
+        <StatutBadge famille="statutActivite" code={contribuable.statutActivite} />
+      ),
     },
     {
       cle: 'action',
       label: 'Action',
       align: 'right',
-      render: (c) => (
-        <Link to={`/agent/dossiers/${c.nif}`} className="inline-flex items-center rounded-lg bg-primary/10 px-3 py-1.5 text-sm font-medium text-primary transition hover:bg-primary/15">
-          Voir
+      render: (contribuable) => (
+        <Link
+          to={`/agent/dossiers/${contribuable.nif}`}
+          className="inline-flex items-center rounded-lg bg-primary/10 px-3 py-1.5 text-sm font-medium text-primary transition hover:bg-primary/15"
+        >
+          Ouvrir le dossier
         </Link>
       ),
     },
   ];
 
-  const modifierRecherche = (value) => { setRecherche(value); setPage(0); };
-
-  const handleCreation = () => {
-    setModalCreationOuvert(false);
-    setRafraichir((n) => n + 1);
-    setToast({ title: 'Contribuable cree', message: 'Le nouveau dossier a bien ete enregistre.' });
-    setTimeout(() => setToast(null), 4000);
-  };
-
   return (
-    <div className="space-y-6">
-      {toast && (
-        <div className="fixed right-4 top-4 z-[60]">
-          <Toast title={toast.title} message={toast.message} variant="success" onClose={() => setToast(null)} />
-        </div>
-      )}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Administration</p>
-          <h1 className="mt-2 text-3xl font-bold text-slate-800">Dossiers contribuables</h1>
-        </div>
-        <div className="flex gap-2 items-center">
-          <button
-            onClick={() => setModalCreationOuvert(true)}
-            className="bg-sky-500 hover:bg-sky-600 text-white px-4 py-2 rounded-lg text-sm transition"
-          >
-            + Nouveau contribuable
-          </button>
+    <div>
+      <PageHeader
+        titre="Dossiers contribuables"
+        description="Recherchez un dossier fiscal, consultez sa situation et générez ses obligations."
+        fil={[{ libelle: 'Espace agent' }, { libelle: 'Dossiers' }]}
+        actions={
+          peut(utilisateur?.role, 'contribuable.gerer') ? (
+            <Button onClick={() => setCreationOuverte(true)}>
+              <Plus className="h-4 w-4" aria-hidden="true" />
+              Nouveau contribuable
+            </Button>
+          ) : null
+        }
+      />
+
+      <SectionCard padding={false}>
+        <div className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-3 py-2 text-sm font-medium text-primary">
-            <FileSearch className="h-4 w-4" />
-            {data?.totalElements ?? 0} dossiers
+            <FileSearch className="h-4 w-4" aria-hidden="true" />
+            {data?.totalElements ?? 0} dossier{(data?.totalElements ?? 0) > 1 ? 's' : ''}
           </div>
         </div>
-      </div>
+        <div className="px-5 pb-5">
+          <ListToolbar
+            value={recherche}
+            onChange={modifierRecherche}
+            placeholder="Rechercher par NIF, raison sociale ou commune…"
+            count={data?.totalElements}
+          />
+          <DataTable
+            colonnes={colonnes}
+            donnees={data?.content || []}
+            chargement={chargement}
+            erreur={erreur}
+            onReessayer={recharger}
+            pagination={
+              data
+                ? {
+                    page: data.number,
+                    totalPages: data.totalPages,
+                    totalElements: data.totalElements,
+                    size: data.size,
+                  }
+                : null
+            }
+            onPageChange={setPage}
+            rechercheActive={Boolean(recherche)}
+            onEffacerRecherche={() => modifierRecherche('')}
+            titreVide="Aucun dossier"
+            descriptionVide={
+              recherche
+                ? 'Aucun contribuable ne correspond à cette recherche.'
+                : 'Aucun contribuable n’est encore enregistré.'
+            }
+            cleLigne={(contribuable) => contribuable.nif}
+          />
+        </div>
+      </SectionCard>
 
-      <div className="fiscal-card p-4"><ListToolbar value={recherche} onChange={modifierRecherche} placeholder="Rechercher par NIF ou raison sociale..." count={data?.totalElements ?? 0} /></div>
-
-      <DataTable
-        colonnes={colonnes}
-        donnees={data?.content || []}
-        chargement={chargement}
-        erreur={erreur}
-        pagination={data ? {
-          page: data.number,
-          totalPages: data.totalPages,
-          totalElements: data.totalElements,
-          size: data.size,
-        } : null}
-        onPageChange={(p) => setPage(p)}
-        rechercheActive={Boolean(recherche)}
-        onEffacerRecherche={() => modifierRecherche('')}
-      />
-
-      <NouveauContribuableModal
-        isOpen={modalCreationOuvert}
-        onClose={() => setModalCreationOuvert(false)}
-        onSuccess={handleCreation}
-      />
+      {creationOuverte && (
+        <NouveauContribuableModal
+          isOpen={creationOuverte}
+          onClose={() => setCreationOuverte(false)}
+          onSuccess={apresCreation}
+        />
+      )}
     </div>
   );
 }
