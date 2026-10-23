@@ -4,6 +4,8 @@
  * effacer un champ, le serveur reste seul maitre du montant final.
  */
 
+import { SEUIL_MINIMUM_CA_IR } from './fiscalConstants';
+
 export const VALEURS_INITIALES_PAR_TYPE = {
   IS: {
     caBrut: '',
@@ -145,7 +147,7 @@ export function pretPourPrevisualisation(codeImpot, valeurs) {
     case 'TVA':
       return renseigne(v.caLocal) && nombre(v.caLocal) >= 0;
     case 'IR':
-      return renseigne(v.caHT) && nombre(v.caHT) >= 0;
+      return renseigne(v.caHT) && nombre(v.caHT) >= SEUIL_MINIMUM_CA_IR;
     case 'IRSA':
       return (v.salaries || []).length > 0
         && v.salaries.every((l) => renseigne(l.salaireBrut) && nombre(l.salaireBrut) >= 0);

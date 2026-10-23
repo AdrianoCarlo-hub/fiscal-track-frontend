@@ -76,7 +76,7 @@ export default function LoginPage() {
                   type="text"
                   value={identifiant}
                   onChange={(e) => setIdentifiant(e.target.value)}
-                  placeholder="NIF0000001 ou agent@impots.mg"
+                  placeholder="0000000001 ou agent@impots.mg"
                   required
                   className="w-full border-0 bg-transparent py-3 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none"
                 />
@@ -117,7 +117,7 @@ export default function LoginPage() {
             <div className="mt-8 border-t border-slate-200 pt-5 text-xs text-slate-500">
               <p className="mb-2 font-semibold uppercase tracking-[0.12em] text-slate-500">Comptes de test</p>
               <ul className="space-y-1">
-                <li>NIF0000001 / password123</li>
+                <li>0000000001 / password123</li>
                 <li>rakoto.jean@impots.mg</li>
                 <li>andry.lova@impots.mg</li>
               </ul>

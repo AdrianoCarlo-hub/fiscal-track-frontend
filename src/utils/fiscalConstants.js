@@ -2,6 +2,9 @@
  * Libelles lisibles utilises dans toute l'interface (code -> texte clair).
  */
 
+/** Seuil minimum de chiffre d'affaires HT pour declarer l'IR (regle metier). */
+export const SEUIL_MINIMUM_CA_IR = 400000000;
+
 export const LIBELLES_IMPOT = {
   IR: 'Impôt sur le revenu (IR)',
   IS: 'Impôt sur les sociétés (IS)',

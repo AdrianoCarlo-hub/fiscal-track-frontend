@@ -6,6 +6,7 @@ const FORMES_JURIDIQUES = ['EI', 'SARL', 'SARLU', 'SA', 'SNC', 'SCS', 'COOPERATI
 const REGIMES = ['REEL', 'SYNTHETIQUE'];
 const OBLIGATIONS_COMPTABLES = ['COMPLET', 'SMT', 'RECETTES_DEPENSES'];
 const STATUTS = ['ACTIF', 'VEILLEUSE', 'RADIE'];
+const NIF_REGEX = /^\d{10}$/;
 
 const CHAMPS_INITIAUX = {
   nif: '',
@@ -28,13 +29,22 @@ const CHAMPS_INITIAUX = {
 export default function NouveauContribuableModal({ isOpen, onClose, onSuccess }) {
   const [form, setForm] = useState(CHAMPS_INITIAUX);
   const [erreur, setErreur] = useState('');
+  const [nifTouche, setNifTouche] = useState(false);
   const [chargement, setChargement] = useState(false);
 
-  const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
+  const nifValide = NIF_REGEX.test(form.nif);
+  const nifInvalide = (nifTouche || form.nif.length > 0) && !nifValide;
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    const valeur = name === 'nif' ? value.replace(/\D/g, '').slice(0, 10) : value;
+    setForm((actuel) => ({ ...actuel, [name]: valeur }));
+  };
 
   const reinitialiser = () => {
     setForm(CHAMPS_INITIAUX);
     setErreur('');
+    setNifTouche(false);
   };
 
   const fermer = () => {
@@ -45,6 +55,10 @@ export default function NouveauContribuableModal({ isOpen, onClose, onSuccess })
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErreur('');
+    if (!nifValide) {
+      setNifTouche(true);
+      return;
+    }
     setChargement(true);
     try {
       await contribuableService.creer(form);
@@ -62,9 +76,27 @@ export default function NouveauContribuableModal({ isOpen, onClose, onSuccess })
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium mb-1">NIF * (10 caracteres)</label>
-            <input name="nif" value={form.nif} onChange={handleChange} required maxLength={10}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500 outline-none" />
+            <label className="block text-sm font-medium mb-1">NIF * (10 chiffres)</label>
+            <input
+              id="nif"
+              name="nif"
+              value={form.nif}
+              onChange={handleChange}
+              onBlur={() => setNifTouche(true)}
+              required
+              maxLength={10}
+              inputMode="numeric"
+              pattern="[0-9]{10}"
+              autoComplete="off"
+              aria-invalid={nifInvalide}
+              aria-describedby={nifInvalide ? 'nif-erreur' : undefined}
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-sky-500 outline-none ${nifInvalide ? 'border-red-400' : 'border-slate-300'}`}
+            />
+            {nifInvalide && (
+              <p id="nif-erreur" className="mt-1 text-sm text-red-600">
+                Le NIF doit contenir exactement 10 chiffres
+              </p>
+            )}
           </div>
           <div>
             <label className="block text-sm font-medium mb-1">Date d'immatriculation *</label>

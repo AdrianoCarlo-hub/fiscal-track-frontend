@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
-import { CATEGORIES_ACTIVITE, CATEGORIES_ACTIVITE_IS, libelleCategorie } from '../../utils/fiscalConstants';
+import { CATEGORIES_ACTIVITE, CATEGORIES_ACTIVITE_IS, SEUIL_MINIMUM_CA_IR, libelleCategorie } from '../../utils/fiscalConstants';
 
 /**
  * Formulaire de declaration adapte au type d'impot de l'obligation.
@@ -106,6 +107,31 @@ function FormTva({ valeurs, maj }) {
 }
 
 function FormIr({ valeurs, onChange, maj }) {
+  const [erreurSaisie, setErreurSaisie] = useState('');
+
+  const saisirCaHT = (brut) => {
+    const texte = String(brut ?? '');
+    if (texte === '') {
+      setErreurSaisie('');
+      maj('caHT', '');
+      return;
+    }
+    if (!saisieCaIrAutorisee(texte)) {
+      setErreurSaisie('Saisie refusée : le chiffre d’affaires HT doit être supérieur ou égal à 400 000 000 Ar.');
+      return;
+    }
+    setErreurSaisie('');
+    maj('caHT', texte);
+  };
+
+  const quitterCaHT = () => {
+    const montant = nombreCaIr(valeurs.caHT);
+    if (montant !== null && montant < SEUIL_MINIMUM_CA_IR) {
+      maj('caHT', '');
+      setErreurSaisie('Chiffre d’affaires HT inférieur à 400 000 000 Ar : le champ a été vidé.');
+    }
+  };
+
   const majDeficit = (index, champ, valeur) => {
     const deficits = valeurs.deficits.map((d, i) => (i === index ? { ...d, [champ]: valeur } : d));
     onChange({ ...valeurs, deficits });
@@ -115,8 +141,10 @@ function FormIr({ valeurs, onChange, maj }) {
     <div className="space-y-5">
       <Section titre="Résultat de l’exercice">
         <Champ label="Chiffre d’affaires hors taxes (Ar)" name="caHT" required
-          value={valeurs.caHT} onChange={(v) => maj('caHT', v)}
-          aide="Recettes de l’exercice, hors taxes." />
+          value={valeurs.caHT} onChange={saisirCaHT} onBlur={quitterCaHT}
+          min={String(SEUIL_MINIMUM_CA_IR)}
+          aide="Recettes de l’exercice, hors taxes. Minimum requis : 400 000 000 Ar."
+          erreur={erreurSaisie || erreurCaIr(valeurs.caHT)} />
         <Champ label="Charges déductibles (Ar)" name="chargesDeductibles"
           value={valeurs.chargesDeductibles} onChange={(v) => maj('chargesDeductibles', v)}
           aide="Charges réellement supportées et justifiées." />
@@ -269,6 +297,39 @@ function FormAcompte({ codeImpot }) {
   );
 }
 
+/**
+ * Le CA HT de l'IR ne peut pas etre saisi sous 400 000 000 Ar.
+ * Une saisie est acceptee tant qu'elle peut encore devenir valide
+ * (prefixe d'un montant >= 400 000 000) ; au-dela de 9 chiffres, tout
+ * montant est automatiquement superieur au seuil.
+ */
+function saisieCaIrAutorisee(texte) {
+  const compact = String(texte).replace(/[\s\u00a0]/g, '').replace(',', '.');
+  if (compact === '' || compact === '-') return true;
+  if (!/^\d*(\.\d*)?$/.test(compact)) return true;
+  const [entier] = compact.split('.');
+  if (entier.length === 0) return true;
+  if (entier.length >= 10) return true;
+  if (entier.length === 9) return entier >= String(SEUIL_MINIMUM_CA_IR);
+  return entier[0] >= '4';
+}
+
+function nombreCaIr(valeur) {
+  if (valeur === '' || valeur === null || valeur === undefined) return null;
+  const compact = String(valeur).replace(/[\s\u00a0]/g, '').replace(',', '.');
+  if (!/^\d*(\.\d*)?$/.test(compact) || compact === '' || compact === '.') return null;
+  const n = Number(compact);
+  return Number.isFinite(n) ? n : null;
+}
+
+function erreurCaIr(valeur) {
+  if (valeur === '' || valeur === null || valeur === undefined) return '';
+  const n = Number(String(valeur).replace(/[\s\u00a0]/g, '').replace(',', '.'));
+  if (!Number.isFinite(n) || n < 0) return '';
+  if (n >= SEUIL_MINIMUM_CA_IR) return '';
+  return 'Le chiffre d’affaires HT doit être supérieur ou égal à 400 000 000 Ar pour déclarer l’IR.';
+}
+
 function erreurNegatif(valeur) {
   if (valeur === '' || valeur === null || valeur === undefined) return '';
   const nombre = Number(String(valeur).replace(/\s/g, '').replace(',', '.'));
@@ -288,7 +349,7 @@ function Section({ titre, children }) {
   );
 }
 
-function Champ({ label, name, value, onChange, required, aide, type = 'number', min = '0', step, erreur }) {
+function Champ({ label, name, value, onChange, onBlur, required, aide, type = 'number', min = '0', step, erreur }) {
   const estNombre = type === 'number';
   return (
     <div>
@@ -302,6 +363,7 @@ function Champ({ label, name, value, onChange, required, aide, type = 'number', 
         step={estNombre ? (step || '0.01') : undefined}
         value={value ?? ''}
         onChange={(e) => onChange(e.target.value)}
+        onBlur={onBlur}
         className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none text-sm"
       />
       {aide && <p className="mt-1 text-xs text-slate-500">{aide}</p>}

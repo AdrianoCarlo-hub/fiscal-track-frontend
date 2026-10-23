@@ -55,6 +55,13 @@ export default function ContribuableForm({ contribuable, onClose, onSuccess }) {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
+            <label className="block text-sm font-medium mb-1">NIF</label>
+            <input value={form.nif} readOnly disabled
+              className="w-full px-3 py-2 border border-slate-200 bg-slate-50 rounded-lg font-mono text-slate-600" />
+            <p className="mt-1 text-xs text-slate-500">Le NIF ne peut pas être modifié.</p>
+          </div>
+
+          <div>
             <label className="block text-sm font-medium mb-1">Raison sociale *</label>
             <input name="raisonSociale" value={form.raisonSociale} onChange={handleChange} required
               className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500 outline-none" />
