@@ -1,5 +1,7 @@
 import api from './api';
 
+export const EVENEMENT_NOTIFICATIONS_LUES = 'fiscal-track:notifications-lues';
+
 const notificationService = {
   lister: async () => (await api.get('/api/notifications')).data,
   parId: async (id) => (await api.get(`/api/notifications/${id}`)).data,

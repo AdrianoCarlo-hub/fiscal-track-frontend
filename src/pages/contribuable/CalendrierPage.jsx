@@ -1,150 +1,377 @@
-import { useEffect, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ArrowRight, CalendarDays, ChevronLeft, ChevronRight, ListChecks } from 'lucide-react';
 import { useAuth } from '../../context/useAuth';
+import useApiData from '../../hooks/useApiData';
 import calendrierService from '../../services/calendrierService';
-import ListeAcomptesObligatoires from '../../components/acomptes/ListeAcomptesObligatoires';
+import PageHeader from '../../components/ui/PageHeader';
+import SectionCard from '../../components/ui/SectionCard';
+import StatutBadge from '../../components/ui/StatutBadge';
+import Modal from '../../components/ui/Modal';
+import Button from '../../components/ui/Button';
+import LoadingState from '../../components/ui/LoadingState';
+import ErrorState from '../../components/ui/ErrorState';
+import KpiCard from '../../components/ui/KpiCard';
+import { formatDate, formatEcheanceRelative, joursAvantEcheance } from '../../utils/formatUtils';
 import { libelleImpot } from '../../utils/fiscalConstants';
 
-const statutDetails = (obligation) => {
-  if (obligation.statutDeclaration === 'DEPOSE') return { label: 'Déclaration déposée', color: 'border-success bg-success text-white', dot: 'bg-success' };
-  const due = new Date(`${String(obligation.dateLimiteReelle).slice(0, 10)}T00:00:00`);
-  const today = new Date(); today.setHours(0, 0, 0, 0);
-  const remaining = Math.ceil((due - today) / 86400000);
-  if (remaining < 0 || obligation.statutDeclaration === 'RETARD') return { label: 'En retard', color: 'border-danger bg-danger text-white', dot: 'bg-danger' };
-  if (remaining <= 7) return { label: 'Échéance proche', color: 'border-warning bg-amber-50 text-[#805E08]', dot: 'bg-warning' };
-  return { label: 'À venir', color: 'border-primary bg-blue-50 text-primary', dot: 'bg-primary' };
-};
+const echeanceDe = (obligation) => obligation.dateLimiteReelle || obligation.dateLimiteTheorique || null;
 
-const formatDate = (value, options = { day: 'numeric', month: 'long', year: 'numeric' }) =>
-  value ? new Date(`${String(value).slice(0, 10)}T00:00:00`).toLocaleDateString('fr-FR', options) : 'Date non renseignée';
+function etatEcheance(obligation) {
+  const echeance = echeanceDe(obligation);
+  if (obligation.statutDeclaration === 'DEPOSE') {
+    return { filtre: 'DEPOSE', variante: 'success', texte: 'Déclaration déposée', famille: 'statutDeclaration', code: 'DEPOSE' };
+  }
+  const jours = joursAvantEcheance(echeance);
+  if (obligation.statutDeclaration === 'RETARD' || (jours !== null && jours < 0)) {
+    return { filtre: 'RETARD', variante: 'danger', texte: 'En retard', famille: 'statutDeclaration', code: 'RETARD' };
+  }
+  if (jours !== null && jours <= 7) {
+    return { filtre: 'PROCHE', variante: 'warning', texte: 'Échéance proche', famille: 'statutDeclaration', code: 'ATTENTE' };
+  }
+  return { filtre: 'A_VENIR', variante: 'info', texte: 'À venir', famille: 'statutDeclaration', code: 'ATTENTE' };
+}
+
+const MOIS = Array.from({ length: 12 }, (_, index) => ({
+  valeur: String(index + 1).padStart(2, '0'),
+  libelle: new Date(2000, index, 1).toLocaleDateString('fr-FR', { month: 'long' }),
+}));
+
+const SELECT_CLASSE =
+  'mt-1.5 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-800 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/15';
 
 export default function CalendrierPage() {
   const { utilisateur } = useAuth();
-  const [obligations, setObligations] = useState([]);
-  const [annee, setAnnee] = useState(new Date().getFullYear());
-  const [chargement, setChargement] = useState(true);
+  const anneeCourante = new Date().getFullYear();
+  const [annee, setAnnee] = useState(anneeCourante);
   const [typeImpot, setTypeImpot] = useState('TOUS');
   const [moisFiltre, setMoisFiltre] = useState('TOUS');
   const [statutFiltre, setStatutFiltre] = useState('TOUS');
   const [selection, setSelection] = useState(null);
 
-  useEffect(() => {
-    Promise.resolve()
-      .then(() => {
-        setChargement(true);
-        return calendrierService.parContribuableEtAnnee(utilisateur.identifiant, annee);
-      })
-      .then(setObligations)
-      .catch(() => {})
-      .finally(() => setChargement(false));
-  }, [utilisateur.identifiant, annee]);
+  const { data, chargement, erreur, recharger } = useApiData(
+    () => calendrierService.parContribuableEtAnnee(utilisateur.identifiant, annee),
+    [utilisateur.identifiant, annee],
+    { valeurInitiale: [] },
+  );
 
-  const filtrerEtGrouperParMois = () => {
-    const groupes = {};
-    obligations.filter((o) => {
-      const month = String(o.dateLimiteReelle).slice(5, 7);
-      return (typeImpot === 'TOUS' || o.codeImpot === typeImpot)
-        && (moisFiltre === 'TOUS' || month === moisFiltre)
-        && (statutFiltre === 'TOUS' || statutDetails(o).label === statutFiltre);
-    }).forEach((o) => {
-      const mois = o.dateLimiteReelle.substring(0, 7);
-      if (!groupes[mois]) groupes[mois] = [];
-      groupes[mois].push(o);
+  const obligations = useMemo(() => (Array.isArray(data) ? data : []), [data]);
+
+  const types = useMemo(
+    () => [...new Set(obligations.map((obligation) => obligation.codeImpot).filter(Boolean))].sort(),
+    [obligations],
+  );
+
+  const compteurs = useMemo(() => {
+    const base = { total: obligations.length, depose: 0, retard: 0, proche: 0 };
+    obligations.forEach((obligation) => {
+      const etat = etatEcheance(obligation);
+      if (etat.filtre === 'DEPOSE') base.depose += 1;
+      if (etat.filtre === 'RETARD') base.retard += 1;
+      if (etat.filtre === 'PROCHE') base.proche += 1;
     });
-    return groupes;
-  };
+    return base;
+  }, [obligations]);
 
-  const groupes = filtrerEtGrouperParMois();
-  const prochaines = obligations.filter((o) => o.statutDeclaration !== 'DEPOSE' && new Date(`${String(o.dateLimiteReelle).slice(0, 10)}T00:00:00`) >= new Date(new Date().setHours(0, 0, 0, 0)))
-    .sort((a, b) => a.dateLimiteReelle.localeCompare(b.dateLimiteReelle)).slice(0, 5);
-  const types = [...new Set(obligations.map((o) => o.codeImpot).filter(Boolean))].sort();
-  const moisOptions = Array.from({ length: 12 }, (_, index) => ({ value: String(index + 1).padStart(2, '0'), label: new Date(2000, index, 1).toLocaleDateString('fr-FR', { month: 'long' }) }));
+  const prochaines = useMemo(
+    () =>
+      obligations
+        .filter((obligation) => {
+          const echeance = echeanceDe(obligation);
+          const etat = etatEcheance(obligation);
+          return etat.filtre !== 'DEPOSE' && echeance && (joursAvantEcheance(echeance) ?? 0) >= 0;
+        })
+        .sort((a, b) => String(echeanceDe(a)).localeCompare(String(echeanceDe(b))))
+        .slice(0, 5),
+    [obligations],
+  );
+
+  const groupes = useMemo(() => {
+    const resultat = {};
+    obligations
+      .filter((obligation) => {
+        const echeance = echeanceDe(obligation);
+        const etat = etatEcheance(obligation);
+        return (
+          (!echeance || typeImpot === 'TOUS' || obligation.codeImpot === typeImpot) &&
+          (moisFiltre === 'TOUS' || String(echeance).slice(5, 7) === moisFiltre) &&
+          (statutFiltre === 'TOUS' || etat.filtre === statutFiltre)
+        );
+      })
+      .forEach((obligation) => {
+        const echeance = echeanceDe(obligation);
+        const cle = echeance ? String(echeance).slice(0, 7) : 'sans-echeance';
+        if (!resultat[cle]) resultat[cle] = [];
+        resultat[cle].push(obligation);
+      });
+    return resultat;
+  }, [obligations, typeImpot, moisFiltre, statutFiltre]);
+
+  const nombreAffiche = Object.values(groupes).reduce((total, items) => total + items.length, 0);
+  const annees = Array.from({ length: 6 }, (_, index) => anneeCourante + 1 - index);
 
   return (
     <div>
-      <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
-        <div><p className="text-sm text-slate-500">Dates limites, impôts et obligations à suivre</p><h1 className="fiscal-page-title mt-1 text-3xl font-semibold">Calendrier fiscal</h1></div>
-        <div className="flex items-center gap-2 rounded-lg border border-slate-300 bg-white p-1">
-          <button aria-label="Année précédente" onClick={() => setAnnee((year) => year - 1)} className="rounded-md p-2 text-slate-600 hover:bg-slate-100"><ChevronLeft className="h-4 w-4" /></button>
-          <span className="min-w-14 text-center font-semibold text-primary">{annee}</span>
-          <button aria-label="Année suivante" onClick={() => setAnnee((year) => year + 1)} className="rounded-md p-2 text-slate-600 hover:bg-slate-100"><ChevronRight className="h-4 w-4" /></button>
-        </div>
-      </header>
-
-      <div className="mb-6">
-        <ListeAcomptesObligatoires nif={utilisateur.identifiant} afficherLienDepot />
-      </div>
-
-      <div className="mb-5 flex flex-wrap gap-2" aria-label="Légende des statuts">
-        {[
-          ['bg-success', 'Déclaration déposée'], ['bg-primary', 'À venir'], ['bg-warning', 'Échéance proche'], ['bg-danger', 'En retard'],
-        ].map(([color, label]) => <span key={label} className="inline-flex items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600"><i className={`h-2 w-2 rounded-full ${color}`} />{label}</span>)}
-      </div>
-
-      <section className="mb-6 grid gap-3 rounded-xl border border-slate-200 bg-white p-4 sm:grid-cols-3" aria-label="Filtres du calendrier">
-        <label className="text-xs font-medium text-slate-600">Type d’impôt<select value={typeImpot} onChange={(event) => setTypeImpot(event.target.value)} className="mt-1.5 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm">
-          <option value="TOUS">Tous les impôts</option>{types.map((type) => <option key={type} value={type}>{libelleImpot(type)}</option>)}
-        </select></label>
-        <label className="text-xs font-medium text-slate-600">Mois<select value={moisFiltre} onChange={(event) => setMoisFiltre(event.target.value)} className="mt-1.5 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm">
-          <option value="TOUS">Toute l’année</option>{moisOptions.map((month) => <option key={month.value} value={month.value}>{month.label}</option>)}
-        </select></label>
-        <label className="text-xs font-medium text-slate-600">Statut<select value={statutFiltre} onChange={(event) => setStatutFiltre(event.target.value)} className="mt-1.5 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm">
-          <option value="TOUS">Tous les statuts</option><option>À venir</option><option>Échéance proche</option><option>En retard</option><option>Déclaration déposée</option>
-        </select></label>
-      </section>
-
-      <section className="mb-6 rounded-xl border border-slate-200 bg-white p-5">
-        <div className="mb-3 flex items-center justify-between"><div><h2 className="font-serif text-xl font-semibold text-primary">Prochaines échéances</h2><p className="text-sm text-slate-500">Les obligations non déposées les plus proches</p></div><CalendarDays className="h-5 w-5 text-primary" /></div>
-        {prochaines.length === 0 ? <p className="py-3 text-sm text-slate-500">Aucune échéance à venir pour cette année.</p> : <ul className="divide-y divide-slate-100">{prochaines.map((item) => {
-          const status = statutDetails(item);
-          return <li key={item.idObligationFiscale}><button onClick={() => setSelection(item)} className="flex w-full flex-wrap items-center justify-between gap-2 py-3 text-left hover:bg-slate-50">
-            <span className="flex items-center gap-3"><i className={`h-2.5 w-2.5 rounded-full ${status.dot}`} /><span><strong className="block text-sm text-primary">{libelleImpot(item.codeImpot)} · {item.periodeFiscale}</strong><span className="text-xs text-slate-500">{formatDate(item.dateLimiteReelle)}</span></span></span><span className={`rounded-md border px-2.5 py-1 text-xs font-semibold ${status.color}`}>{status.label}</span>
-          </button></li>;
-        })}</ul>}
-      </section>
-
-      <div className="mb-3 flex items-end justify-between"><div><h2 className="font-serif text-xl font-semibold text-primary">Échéances par mois</h2><p className="text-sm text-slate-500">Sélectionnez une ligne pour consulter son détail.</p></div><span className="text-sm text-slate-500">{Object.values(groupes).flat().length} obligation(s)</span></div>
-
-      {chargement ? <p>Chargement...</p> : Object.keys(groupes).length === 0 ? (
-        <div className="bg-white p-8 rounded-xl shadow-sm text-center text-slate-500">
-          Aucune echeance pour {annee}
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {Object.entries(groupes).sort().map(([mois, items]) => (
-            <div key={mois} className="fiscal-card p-5">
-              <h3 className="mb-3 font-serif text-lg font-semibold capitalize text-primary">
-                {new Date(mois + '-01').toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}
-              </h3>
-              <div className="space-y-2">
-                {items.map((o) => (
-                  <button key={o.idObligationFiscale} onClick={() => setSelection(o)} className="flex w-full flex-wrap items-center justify-between gap-3 border-b border-slate-100 py-3 text-left last:border-0 hover:bg-slate-50">
-                    <span><strong className="block text-sm font-semibold text-primary">{libelleImpot(o.codeImpot)} · {o.periodeFiscale}</strong><span className="text-xs text-slate-500">Échéance : {formatDate(o.dateLimiteReelle)}</span></span>
-                    <StatutBadge statut={o} />
-                  </button>
+      <PageHeader
+        titre="Calendrier fiscal"
+        description="Visualisez vos échéances par mois, identifiez celles qui arrivent à terme et déclarez directement en ligne."
+        fil={[{ libelle: 'Mon espace fiscal' }, { libelle: 'Calendrier fiscal' }]}
+        actions={
+          <>
+            <div className="flex items-center gap-1 rounded-lg border border-slate-300 bg-white p-1">
+              <button
+                type="button"
+                aria-label="Année précédente"
+                onClick={() => setAnnee((valeur) => valeur - 1)}
+                className="rounded-md p-2 text-slate-600 hover:bg-slate-100"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <select
+                value={annee}
+                onChange={(evenement) => setAnnee(Number(evenement.target.value))}
+                aria-label="Année du calendrier"
+                className="rounded-md border-0 bg-transparent px-2 py-1 text-sm font-semibold text-primary focus:outline-none"
+              >
+                {annees.map((valeur) => (
+                  <option key={valeur} value={valeur}>
+                    {valeur}
+                  </option>
                 ))}
-              </div>
+              </select>
+              <button
+                type="button"
+                aria-label="Année suivante"
+                onClick={() => setAnnee((valeur) => valeur + 1)}
+                className="rounded-md p-2 text-slate-600 hover:bg-slate-100"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
             </div>
-          ))}
-        </div>
-      )}
-      {selection && <div className="fixed inset-0 z-50 flex items-end justify-center bg-[#101936]/50 p-0 sm:items-center sm:p-4" onClick={() => setSelection(null)}>
-        <section role="dialog" aria-modal="true" aria-labelledby="echeance-title" onClick={(event) => event.stopPropagation()} className="w-full max-w-lg rounded-t-2xl bg-white p-6 shadow-xl sm:rounded-2xl">
-          <div className="mb-5 flex items-start justify-between"><div><p className="text-sm text-slate-500">Détail de l’obligation</p><h2 id="echeance-title" className="mt-1 font-serif text-2xl font-semibold text-primary">{libelleImpot(selection.codeImpot)}</h2></div><button onClick={() => setSelection(null)} aria-label="Fermer" className="rounded-md px-3 py-1 text-slate-500 hover:bg-slate-100">✕</button></div>
-          <dl className="grid grid-cols-2 gap-4 text-sm"><div><dt className="text-slate-500">Période</dt><dd className="mt-1 font-medium text-primary">{selection.periodeFiscale || '—'}</dd></div><div><dt className="text-slate-500">Échéance</dt><dd className="mt-1 font-medium text-primary">{formatDate(selection.dateLimiteReelle)}</dd></div><div><dt className="text-slate-500">Statut</dt><dd className="mt-1"><StatutBadge statut={selection} /></dd></div><div><dt className="text-slate-500">Déclaration</dt><dd className="mt-1 font-medium text-primary">{selection.statutDeclaration === 'DEPOSE' ? 'Déposée' : 'Non déposée'}</dd></div></dl>
-          {selection.statutDeclaration !== 'DEPOSE' && <Link to={`/contribuable/declarations/deposer/${selection.idObligationFiscale}`} className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-3 text-sm font-semibold text-white hover:bg-primary/90">Déclarer cette obligation <ArrowRight className="h-4 w-4" /></Link>}
-        </section>
-      </div>}
-    </div>
-  );
-}
+            <Link
+              to="/contribuable/acomptes"
+              className="inline-flex items-center gap-2 rounded-lg bg-primary/10 px-3 py-2.5 text-sm font-medium text-primary hover:bg-primary/15"
+            >
+              <ListChecks className="h-4 w-4" aria-hidden="true" />
+              Mes acomptes
+            </Link>
+          </>
+        }
+      />
 
-function StatutBadge({ statut }) {
-  const status = statutDetails(statut);
-  return (
-    <span className={`inline-flex items-center gap-2 rounded-md border px-2.5 py-1 text-xs font-semibold ${status.color}`}>
-      {status.label}
-    </span>
+      {erreur ? (
+        <ErrorState erreur={erreur} onReessayer={recharger} />
+      ) : chargement ? (
+        <LoadingState message="Chargement du calendrier…" />
+      ) : (
+        <>
+          <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <KpiCard title="Obligations de l’année" value={compteurs.total} icon={CalendarDays} />
+            <KpiCard title="Déclarations déposées" value={compteurs.depose} icon={CalendarDays} tone="success" />
+            <KpiCard title="Échéances proches" value={compteurs.proche} icon={CalendarDays} tone="warning" />
+            <KpiCard title="En retard" value={compteurs.retard} icon={CalendarDays} tone={compteurs.retard > 0 ? 'danger' : 'success'} />
+          </div>
+
+          <SectionCard
+            titre="Prochaines échéances"
+            description="Les obligations non déposées les plus proches de leur date limite."
+            className="mb-6"
+          >
+            {prochaines.length === 0 ? (
+              <p className="text-sm text-slate-500">Aucune échéance à venir pour l’année {annee}.</p>
+            ) : (
+              <ul className="divide-y divide-slate-100">
+                {prochaines.map((obligation) => {
+                  const etat = etatEcheance(obligation);
+                  const echeance = echeanceDe(obligation);
+                  return (
+                    <li key={obligation.idObligationFiscale}>
+                      <button
+                        type="button"
+                        onClick={() => setSelection(obligation)}
+                        className="flex w-full flex-wrap items-center justify-between gap-3 py-3 text-left transition hover:bg-slate-50"
+                      >
+                        <span className="min-w-0">
+                          <span className="block text-sm font-semibold text-primary">
+                            {libelleImpot(obligation.codeImpot)} · {obligation.periodeFiscale}
+                          </span>
+                          <span className="text-xs text-slate-500">
+                            {formatDate(echeance)} — {formatEcheanceRelative(echeance)}
+                          </span>
+                        </span>
+                        <StatutBadge
+                          famille={etat.famille}
+                          code={etat.code}
+                          variante={etat.variante}
+                          texte={etat.texte}
+                        />
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </SectionCard>
+
+          <SectionCard titre="Filtrer les échéances" className="mb-6">
+            <div className="grid gap-4 sm:grid-cols-3">
+              <label className="text-xs font-medium text-slate-600">
+                Type d’impôt
+                <select value={typeImpot} onChange={(evenement) => setTypeImpot(evenement.target.value)} className={SELECT_CLASSE}>
+                  <option value="TOUS">Tous les impôts</option>
+                  {types.map((type) => (
+                    <option key={type} value={type}>
+                      {libelleImpot(type)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="text-xs font-medium text-slate-600">
+                Mois
+                <select value={moisFiltre} onChange={(evenement) => setMoisFiltre(evenement.target.value)} className={SELECT_CLASSE}>
+                  <option value="TOUS">Toute l’année</option>
+                  {MOIS.map((mois) => (
+                    <option key={mois.valeur} value={mois.valeur}>
+                      {mois.libelle}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="text-xs font-medium text-slate-600">
+                Statut
+                <select value={statutFiltre} onChange={(evenement) => setStatutFiltre(evenement.target.value)} className={SELECT_CLASSE}>
+                  <option value="TOUS">Tous les statuts</option>
+                  <option value="A_VENIR">À venir</option>
+                  <option value="PROCHE">Échéance proche</option>
+                  <option value="RETARD">En retard</option>
+                  <option value="DEPOSE">Déclaration déposée</option>
+                </select>
+              </label>
+            </div>
+          </SectionCard>
+
+          <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
+            <div>
+              <h2 className="font-serif text-xl font-semibold text-primary">Échéances par mois</h2>
+              <p className="text-sm text-slate-500">Sélectionnez une obligation pour afficher son détail.</p>
+            </div>
+            <span className="text-sm text-slate-500">{nombreAffiche} obligation(s) affichée(s)</span>
+          </div>
+
+          {Object.keys(groupes).length === 0 ? (
+            <div className="fiscal-card p-8 text-center text-sm text-slate-500">
+              Aucune échéance ne correspond à ces filtres pour l’année {annee}.
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {Object.entries(groupes)
+                .sort(([a], [b]) => a.localeCompare(b))
+                .map(([mois, items]) => (
+                  <SectionCard
+                    key={mois}
+                    titre={
+                      mois === 'sans-echeance'
+                        ? 'Échéance non définie'
+                        : new Date(`${mois}-01T00:00:00`).toLocaleDateString('fr-FR', {
+                            month: 'long',
+                            year: 'numeric',
+                          })
+                    }
+                    padding={false}
+                  >
+                    <ul className="divide-y divide-slate-100">
+                      {items.map((obligation) => {
+                        const etat = etatEcheance(obligation);
+                        const echeance = echeanceDe(obligation);
+                        return (
+                          <li key={obligation.idObligationFiscale}>
+                            <button
+                              type="button"
+                              onClick={() => setSelection(obligation)}
+                              className="flex w-full flex-wrap items-center justify-between gap-3 px-5 py-3 text-left transition hover:bg-slate-50"
+                            >
+                              <span className="min-w-0">
+                                <span className="block text-sm font-semibold text-primary">
+                                  {libelleImpot(obligation.codeImpot)} · {obligation.periodeFiscale}
+                                </span>
+                                <span className="text-xs text-slate-500">
+                                  Échéance : {formatDate(echeance)}
+                                </span>
+                              </span>
+                              <StatutBadge
+                                famille={etat.famille}
+                                code={etat.code}
+                                variante={etat.variante}
+                                texte={etat.texte}
+                              />
+                            </button>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </SectionCard>
+                ))}
+            </div>
+          )}
+        </>
+      )}
+
+      <Modal
+        ouvert={!!selection}
+        onClose={() => setSelection(null)}
+        titre={selection ? libelleImpot(selection.codeImpot) : ''}
+        description="Détail de l’obligation fiscale"
+        pied={
+          selection && selection.statutDeclaration !== 'DEPOSE' ? (
+            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <Button variant="ghost" onClick={() => setSelection(null)}>
+                Fermer
+              </Button>
+              <Link
+                to={`/contribuable/declarations/deposer/${selection.idObligationFiscale}`}
+                className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-white transition hover:bg-primary/90"
+              >
+                Déclarer cette obligation
+                <ArrowRight className="h-4 w-4" aria-hidden="true" />
+              </Link>
+            </div>
+          ) : (
+            <Button variant="ghost" onClick={() => setSelection(null)}>
+              Fermer
+            </Button>
+          )
+        }
+      >
+        {selection && (
+          <dl className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
+            <div>
+              <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">Période fiscale</dt>
+              <dd className="mt-1 font-medium text-slate-800">{selection.periodeFiscale || '—'}</dd>
+            </div>
+            <div>
+              <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">Date limite</dt>
+              <dd className="mt-1 font-medium text-slate-800">{formatDate(echeanceDe(selection))}</dd>
+            </div>
+            <div>
+              <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">Statut</dt>
+              <dd className="mt-1">
+                <StatutBadge
+                  famille={etatEcheance(selection).famille}
+                  code={etatEcheance(selection).code}
+                  variante={etatEcheance(selection).variante}
+                  texte={etatEcheance(selection).texte}
+                />
+              </dd>
+            </div>
+            <div>
+              <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">Déclaration</dt>
+              <dd className="mt-1 font-medium text-slate-800">
+                {selection.statutDeclaration === 'DEPOSE' ? 'Déposée' : 'Non déposée'}
+              </dd>
+            </div>
+          </dl>
+        )}
+      </Modal>
+    </div>
   );
 }

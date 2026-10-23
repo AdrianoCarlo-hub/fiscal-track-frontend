@@ -10,18 +10,18 @@ import { CATEGORIES_ACTIVITE, CATEGORIES_ACTIVITE_IS, SEUIL_MINIMUM_CA_IR, libel
  * Les valeurs sont stockees en chaine de caracteres ; la conversion en
  * nombres se fait dans utils/declarationUtils avant l'envoi.
  */
-export default function FormulaireDeclaration({ codeImpot, valeurs, onChange }) {
+export default function FormulaireDeclaration({ codeImpot, valeurs, onChange, erreurs = {} }) {
   const maj = (champ, valeur) => onChange({ ...valeurs, [champ]: valeur });
 
   switch (codeImpot) {
     case 'IS':
-      return <FormIS valeurs={valeurs} maj={maj} />;
+      return <FormIS valeurs={valeurs} maj={maj} erreurs={erreurs} />;
     case 'TVA':
-      return <FormTva valeurs={valeurs} maj={maj} />;
+      return <FormTva valeurs={valeurs} maj={maj} erreurs={erreurs} />;
     case 'IR':
-      return <FormIr valeurs={valeurs} onChange={onChange} maj={maj} />;
+      return <FormIr valeurs={valeurs} onChange={onChange} maj={maj} erreurs={erreurs} />;
     case 'IRSA':
-      return <FormIrsa valeurs={valeurs} onChange={onChange} />;
+      return <FormIrsa valeurs={valeurs} onChange={onChange} erreurs={erreurs} />;
     case 'ACOMPTE_IR':
     case 'ACOMPTE_IS':
       return <FormAcompte codeImpot={codeImpot} />;
@@ -35,12 +35,12 @@ export default function FormulaireDeclaration({ codeImpot, valeurs, onChange }) 
   }
 }
 
-function FormIS({ valeurs, maj }) {
+function FormIS({ valeurs, maj, erreurs }) {
   return (
     <div className="space-y-5">
       <Section titre="Chiffre d’affaires de l’exercice">
         <Champ label="Chiffre d’affaires brut encaissé" name="caBrut" required
-          value={valeurs.caBrut} onChange={(v) => maj('caBrut', v)}
+          value={valeurs.caBrut} onChange={(v) => maj('caBrut', v)} erreur={erreurs.caBrut}
           aide="Montant TTC encaissé sur l’exercice, avant déduction des charges." />
         <div className="flex flex-wrap gap-4 pt-1">
           <Case label="Adhérent à la CGA (centre de gestion agréé)"
@@ -48,22 +48,22 @@ function FormIS({ valeurs, maj }) {
             aide="Vous bénéficiez du régime du résultat net réel simplifié." />
         </div>
         <Champ label="Achats et charges conformes (Ar)" name="achatsConformes"
-          value={valeurs.achatsConformes} onChange={(v) => maj('achatsConformes', v)}
+          value={valeurs.achatsConformes} onChange={(v) => maj('achatsConformes', v)} erreur={erreurs.achatsConformes}
           aide="Uniquement si vous êtes adhérent à la CGA." />
       </Section>
 
       <Section titre="Charges et autres acomptes">
         <Champ label="Charges salariales de l’exercice (Ar)" name="chargesSalariales"
-          value={valeurs.chargesSalariales} onChange={(v) => maj('chargesSalariales', v)} />
+          value={valeurs.chargesSalariales} onChange={(v) => maj('chargesSalariales', v)} erreur={erreurs.chargesSalariales} />
         <div className="grid gap-4 sm:grid-cols-2">
           <Champ label="Acomptes perçus en douane (Ar)" name="acomptesDouane"
             value={valeurs.acomptesDouane} onChange={(v) => maj('acomptesDouane', v)}
             aide="Montant facultatif déjà versé à la douane au titre de cet impôt."
-            erreur={erreurNegatif(valeurs.acomptesDouane)} />
+            erreur={erreurNegatif(valeurs.acomptesDouane) || erreurs.acomptesDouane} />
           <Champ label="Acomptes marchés publics (Ar)" name="acomptesMarchesPublics"
             value={valeurs.acomptesMarchesPublics} onChange={(v) => maj('acomptesMarchesPublics', v)}
             aide="Montant facultatif retenu sur les marchés publics."
-            erreur={erreurNegatif(valeurs.acomptesMarchesPublics)} />
+            erreur={erreurNegatif(valeurs.acomptesMarchesPublics) || erreurs.acomptesMarchesPublics} />
         </div>
       </Section>
 
@@ -76,15 +76,15 @@ function FormIS({ valeurs, maj }) {
   );
 }
 
-function FormTva({ valeurs, maj }) {
+function FormTva({ valeurs, maj, erreurs }) {
   return (
     <div className="space-y-5">
       <Section titre="Opérations de la période">
         <Champ label="Chiffre d’affaires imposable localement (Ar)" name="caLocal" required
-          value={valeurs.caLocal} onChange={(v) => maj('caLocal', v)}
+          value={valeurs.caLocal} onChange={(v) => maj('caLocal', v)} erreur={erreurs.caLocal}
           aide="Ventes et prestations réalisées à Madagascar (taux normal 20 %)." />
         <Champ label="Chiffre d’affaires à l’exportation (Ar)" name="caExportation"
-          value={valeurs.caExportation} onChange={(v) => maj('caExportation', v)}
+          value={valeurs.caExportation} onChange={(v) => maj('caExportation', v)} erreur={erreurs.caExportation}
           aide="Exportations : TVA à 0 %, elles ne produisent aucune TVA collectée." />
         <Case label="Livraisons de gaz butane (taux réduit)"
           checked={valeurs.gazButane} onChange={(v) => maj('gazButane', v)} />
@@ -92,21 +92,21 @@ function FormTva({ valeurs, maj }) {
 
       <Section titre="TVA déductible">
         <Champ label="TVA déductible sur les biens et services (Ar)" name="tvaDeductibleBiens"
-          value={valeurs.tvaDeductibleBiens} onChange={(v) => maj('tvaDeductibleBiens', v)}
+          value={valeurs.tvaDeductibleBiens} onChange={(v) => maj('tvaDeductibleBiens', v)} erreur={erreurs.tvaDeductibleBiens}
           aide="TVA facturée par vos fournisseurs sur les achats courants." />
         <Champ label="TVA déductible sur les immobilisations (Ar)" name="tvaDeductibleImmobilisations"
           value={valeurs.tvaDeductibleImmobilisations}
-          onChange={(v) => maj('tvaDeductibleImmobilisations', v)}
+          onChange={(v) => maj('tvaDeductibleImmobilisations', v)} erreur={erreurs.tvaDeductibleImmobilisations}
           aide="TVA sur les équipements et constructions acquis." />
         <Champ label="Crédit de TVA antérieur (Ar)" name="creditTvaAnterieur"
-          value={valeurs.creditTvaAnterieur} onChange={(v) => maj('creditTvaAnterieur', v)}
+          value={valeurs.creditTvaAnterieur} onChange={(v) => maj('creditTvaAnterieur', v)} erreur={erreurs.creditTvaAnterieur}
           aide="Crédit reporté des périodes précédentes." />
       </Section>
     </div>
   );
 }
 
-function FormIr({ valeurs, onChange, maj }) {
+function FormIr({ valeurs, onChange, maj, erreurs }) {
   const [erreurSaisie, setErreurSaisie] = useState('');
 
   const saisirCaHT = (brut) => {
@@ -144,7 +144,7 @@ function FormIr({ valeurs, onChange, maj }) {
           value={valeurs.caHT} onChange={saisirCaHT} onBlur={quitterCaHT}
           min={String(SEUIL_MINIMUM_CA_IR)}
           aide="Recettes de l’exercice, hors taxes. Minimum requis : 400 000 000 Ar."
-          erreur={erreurSaisie || erreurCaIr(valeurs.caHT)} />
+          erreur={erreurSaisie || erreurCaIr(valeurs.caHT) || erreurs.caHT} />
         <Champ label="Charges déductibles (Ar)" name="chargesDeductibles"
           value={valeurs.chargesDeductibles} onChange={(v) => maj('chargesDeductibles', v)}
           aide="Charges réellement supportées et justifiées." />
@@ -159,11 +159,11 @@ function FormIr({ valeurs, onChange, maj }) {
           <Champ label="Acomptes perçus en douane (Ar)" name="acomptesDouane"
             value={valeurs.acomptesDouane} onChange={(v) => maj('acomptesDouane', v)}
             aide="Montant facultatif déjà versé à la douane au titre de cet impôt."
-            erreur={erreurNegatif(valeurs.acomptesDouane)} />
+            erreur={erreurNegatif(valeurs.acomptesDouane) || erreurs.acomptesDouane} />
           <Champ label="Acomptes marchés publics (Ar)" name="acomptesMarchesPublics"
             value={valeurs.acomptesMarchesPublics} onChange={(v) => maj('acomptesMarchesPublics', v)}
             aide="Montant facultatif retenu sur les marchés publics."
-            erreur={erreurNegatif(valeurs.acomptesMarchesPublics)} />
+            erreur={erreurNegatif(valeurs.acomptesMarchesPublics) || erreurs.acomptesMarchesPublics} />
         </div>
       </Section>
 
@@ -210,7 +210,7 @@ function FormIr({ valeurs, onChange, maj }) {
   );
 }
 
-function FormIrsa({ valeurs, onChange }) {
+function FormIrsa({ valeurs, onChange, erreurs }) {
   const majLigne = (index, champ, valeur) => {
     const salaries = valeurs.salaries.map((l, i) => (i === index ? { ...l, [champ]: valeur } : l));
     onChange({ ...valeurs, salaries });
@@ -256,7 +256,8 @@ function FormIrsa({ valeurs, onChange }) {
             <Champ label="Nom du salarié" name={`nom-${i}`} type="text" value={ligne.nom}
               onChange={(v) => majLigne(i, 'nom', v)} />
             <Champ label="Salaire brut mensuel (Ar)" name={`brut-${i}`} required
-              value={ligne.salaireBrut} onChange={(v) => majLigne(i, 'salaireBrut', v)} />
+              value={ligne.salaireBrut} onChange={(v) => majLigne(i, 'salaireBrut', v)}
+              erreur={erreurs[`salaries[${i}].salaireBrut`]} />
             <Champ label="Cotisations sociales (Ar)" name={`cotis-${i}`}
               value={ligne.cotisationsSociales} onChange={(v) => majLigne(i, 'cotisationsSociales', v)}
               aide="Part salariale retenue sur le bulletin de paie." />

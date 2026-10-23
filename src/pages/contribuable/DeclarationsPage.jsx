@@ -1,114 +1,226 @@
-import { useEffect, useState } from 'react';
-import { FileText, ShieldCheck } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { FileText, Info } from 'lucide-react';
 import { useAuth } from '../../context/useAuth';
-import obligationService from '../../services/obligationService';
+import useApiData, { useListView } from '../../hooks/useApiData';
 import declarationService from '../../services/declarationService';
-import StatusBadge from '../../components/ui/StatusBadge';
-import Pagination from '../../components/common/Pagination';
-import { ListToolbar } from '../../components/common/DataTable';
-import { useListView } from '../../hooks/useApiData';
+import obligationService from '../../services/obligationService';
+import PageHeader from '../../components/ui/PageHeader';
+import SectionCard from '../../components/ui/SectionCard';
+import DataTable, { ListToolbar } from '../../components/common/DataTable';
+import StatutBadge from '../../components/ui/StatutBadge';
+import Modal from '../../components/ui/Modal';
+import Button from '../../components/ui/Button';
+import DetailList from '../../components/ui/DetailList';
+import Alert from '../../components/ui/Alert';
+import { formatDate, formatDateHeure, formatMontant } from '../../utils/formatUtils';
+import { libelleImpot } from '../../utils/fiscalConstants';
+
+async function chargerDeclarations(nif) {
+  const [declarations, obligations] = await Promise.all([
+    declarationService.parContribuable(nif),
+    obligationService.parContribuable(nif),
+  ]);
+  const obligationsParId = new Map(
+    (Array.isArray(obligations) ? obligations : []).map((obligation) => [
+      obligation.idObligationFiscale,
+      obligation,
+    ]),
+  );
+  return (Array.isArray(declarations) ? declarations : []).map((declaration) => ({
+    ...declaration,
+    obligation: obligationsParId.get(declaration.idObligationFiscale) || null,
+  }));
+}
 
 export default function DeclarationsPage() {
   const { utilisateur } = useAuth();
-  const [declarations, setDeclarations] = useState([]);
-  const [chargement, setChargement] = useState(true);
-  const liste = useListView(declarations);
+  const [selection, setSelection] = useState(null);
 
-  useEffect(() => {
-    const charger = async () => {
-      try {
-        const obligations = await obligationService.parContribuable(utilisateur.identifiant);
-        const decls = await Promise.all(
-          obligations
-            .filter((o) => o.statutDeclaration === 'DEPOSE')
-            .map((o) => declarationService.parObligation(o.idObligationFiscale).catch(() => null))
-        );
-        setDeclarations(decls.filter(Boolean));
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setChargement(false);
-      }
-    };
-    charger();
-  }, [utilisateur.identifiant]);
+  const { data, chargement, erreur, recharger } = useApiData(
+    () => chargerDeclarations(utilisateur.identifiant),
+    [utilisateur.identifiant],
+    { valeurInitiale: [] },
+  );
 
-  const formatMontant = (m) =>
-    new Intl.NumberFormat('fr-MG', { style: 'currency', currency: 'MGA', maximumFractionDigits: 0 })
-      .format(m || 0);
+  const declarations = useMemo(() => (Array.isArray(data) ? data : []), [data]);
+
+  const { query, setQuery, clear, setPage, items, filteredCount, pagination } = useListView(
+    declarations,
+    10,
+  );
+
+  const colonnes = [
+    {
+      cle: 'impot',
+      label: 'Impôt / période',
+      render: (declaration) => (
+        <div>
+          <p className="font-medium text-slate-800">
+            {declaration.obligation ? libelleImpot(declaration.obligation.codeImpot) : 'Déclaration'}
+          </p>
+          <p className="text-xs text-slate-500">
+            {declaration.obligation?.periodeFiscale || `Obligation n°${declaration.idObligationFiscale}`}
+          </p>
+        </div>
+      ),
+    },
+    {
+      cle: 'chiffreAffairesDeclare',
+      label: 'Chiffre d’affaires déclaré',
+      align: 'right',
+      render: (declaration) => (
+        <span className="fiscal-money">{formatMontant(declaration.chiffreAffairesDeclare)}</span>
+      ),
+    },
+    {
+      cle: 'impotPrincipalCalcule',
+      label: 'Impôt calculé',
+      align: 'right',
+      render: (declaration) => (
+        <span className="fiscal-money font-semibold text-slate-800">
+          {formatMontant(declaration.impotPrincipalCalcule)}
+        </span>
+      ),
+    },
+    {
+      cle: 'dateSoumission',
+      label: 'Soumission',
+      render: (declaration) => (
+        <div>
+          <p>{formatDate(declaration.dateSoumission)}</p>
+          <p className="text-xs text-slate-500">
+            Réf. #{declaration.idDeclaration}
+          </p>
+        </div>
+      ),
+    },
+    {
+      cle: 'statutValidation',
+      label: 'Statut',
+      render: (declaration) => (
+        <div>
+          <StatutBadge famille="statutValidation" code={declaration.statutValidation} />
+          {declaration.statutValidation === 'REJETEE' && declaration.motifRejet && (
+            <p className="mt-1 max-w-xs text-xs text-danger">{declaration.motifRejet}</p>
+          )}
+        </div>
+      ),
+    },
+    {
+      cle: 'actions',
+      label: 'Détail',
+      align: 'right',
+      render: (declaration) => (
+        <Button variant="ghost" size="sm" onClick={() => setSelection(declaration)}>
+          <FileText className="h-4 w-4" aria-hidden="true" />
+          Consulter
+        </Button>
+      ),
+    },
+  ];
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Déclarations</p>
-          <h1 className="mt-2 text-3xl font-bold text-slate-800">Mes déclarations</h1>
-        </div>
-        <div className="inline-flex items-center gap-2 rounded-full border border-success/20 bg-success/10 px-3 py-2 text-sm font-medium text-success">
-          <ShieldCheck className="h-4 w-4" />
-          Déclarations soumises
-        </div>
-      </div>
+    <div>
+      <PageHeader
+        titre="Mes déclarations"
+        description="Historique des déclarations déposées auprès de votre centre fiscal, avec le détail du calcul effectué par l’administration."
+        fil={[{ libelle: 'Mon espace fiscal' }, { libelle: 'Mes déclarations' }]}
+      />
 
-      {chargement ? (
-        <div className="fiscal-card p-8 text-sm text-slate-500">Chargement des déclarations...</div>
-      ) : declarations.length === 0 ? (
-        <div className="fiscal-card flex flex-col items-center justify-center px-6 py-14 text-center">
-          <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-            <FileText className="h-6 w-6" />
-          </div>
-          <h2 className="text-lg font-semibold text-slate-800">Aucune déclaration déposée</h2>
-          <p className="mt-2 text-sm text-slate-500">Aucun élément n’est disponible pour le moment.</p>
+      <Alert variante="info" titre="Calcul de l’impôt" className="mb-5">
+        Le montant d’impôt affiché est calculé par le serveur au moment du dépôt. Il ne peut pas
+        être modifié depuis cette page.
+      </Alert>
+
+      <SectionCard padding={false}>
+        <div className="p-5">
+          <ListToolbar
+            value={query}
+            onChange={setQuery}
+            placeholder="Rechercher par référence, impôt, montant ou date…"
+            count={filteredCount}
+          />
+          <DataTable
+            colonnes={colonnes}
+            donnees={items}
+            chargement={chargement}
+            erreur={erreur}
+            onReessayer={recharger}
+            pagination={pagination}
+            onPageChange={setPage}
+            rechercheActive={!!query}
+            onEffacerRecherche={clear}
+            titreVide="Aucune déclaration déposée"
+            descriptionVide="Vous n’avez pas encore déposé de déclaration. Rendez-vous dans « Mes obligations » pour commencer."
+            cleLigne={(declaration) => declaration.idDeclaration}
+          />
         </div>
-      ) : (
-        <>
-        <div className="mb-4"><ListToolbar value={liste.query} onChange={liste.setQuery} placeholder="Rechercher par référence, statut ou date…" count={liste.filteredCount} /></div>
-        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
-              <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">
-                <tr>
-                  <th className="px-4 py-3">Référence</th>
-                  <th className="px-4 py-3 text-right">Chiffre d’affaires</th>
-                  <th className="px-4 py-3 text-right">Impôt calculé</th>
-                  <th className="px-4 py-3">Soumission</th>
-                  <th className="px-4 py-3">Statut</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {liste.items.map((d) => (
-                  <tr key={d.idDeclaration} className="hover:bg-slate-50">
-                    <td className="px-4 py-3 font-mono text-xs font-semibold text-slate-700">#{d.idDeclaration}</td>
-                    <td className="px-4 py-3 text-right font-medium text-slate-700">{formatMontant(d.chiffreAffairesDeclare)}</td>
-                    <td className="px-4 py-3 text-right font-semibold text-slate-800">{formatMontant(d.impotPrincipalCalcule)}</td>
-                    <td className="px-4 py-3 text-slate-600">{d.dateSoumission?.substring(0, 10)}</td>
-                    <td className="px-4 py-3">
-                      <StatusBadge
-                        variant={
-                          d.statutValidation === 'VALIDEE'
-                            ? 'success'
-                            : d.statutValidation === 'REJETEE'
-                              ? 'danger'
-                              : 'warning'
-                        }
-                      >
-                        {d.statutValidation === 'VALIDEE' ? 'Validée'
-                          : d.statutValidation === 'REJETEE' ? 'Rejetée' : 'En attente'}
-                      </StatusBadge>
-                      {d.statutValidation === 'REJETEE' && d.motifRejet && (
-                        <p className="mt-1 max-w-xs text-xs text-red-600">{d.motifRejet}</p>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+      </SectionCard>
+
+      <Modal
+        ouvert={!!selection}
+        onClose={() => setSelection(null)}
+        titre="Détail de la déclaration"
+        description={selection?.obligation ? `${libelleImpot(selection.obligation.codeImpot)} · ${selection.obligation.periodeFiscale}` : ''}
+        taille="lg"
+        pied={
+          <Button variant="ghost" onClick={() => setSelection(null)}>
+            Fermer
+          </Button>
+        }
+      >
+        {selection && (
+          <div className="space-y-5">
+            <DetailList
+              colonnes={2}
+              elements={[
+                { libelle: 'Référence', valeur: `#${selection.idDeclaration}` },
+                {
+                  libelle: 'Obligation',
+                  valeur: selection.obligation
+                    ? `${libelleImpot(selection.obligation.codeImpot)} — ${selection.obligation.periodeFiscale}`
+                    : `n°${selection.idObligationFiscale}`,
+                },
+                { libelle: 'Chiffre d’affaires déclaré', valeur: formatMontant(selection.chiffreAffairesDeclare) },
+                { libelle: 'Impôt principal calculé', valeur: formatMontant(selection.impotPrincipalCalcule) },
+                { libelle: 'Date de soumission', valeur: formatDateHeure(selection.dateSoumission) },
+                {
+                  libelle: 'Statut de validation',
+                  valeur: <StatutBadge famille="statutValidation" code={selection.statutValidation} />,
+                },
+                { libelle: 'Crédit fiscal', valeur: formatMontant(selection.creditFiscal) },
+                { libelle: 'Crédit utilisé', valeur: formatMontant(selection.creditUtilise) },
+              ]}
+            />
+
+            {selection.detailCalcul && (
+              <div>
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                  Détail du calcul
+                </p>
+                <pre className="mt-1 whitespace-pre-wrap rounded-lg border border-slate-200 bg-slate-50 p-4 text-xs leading-relaxed text-slate-700">
+                  {selection.detailCalcul}
+                </pre>
+              </div>
+            )}
+
+            {selection.statutValidation === 'REJETEE' && (
+              <Alert variante="danger" titre="Motif du rejet">
+                {selection.motifRejet || 'Aucun motif n’a été précisé. Contactez votre centre fiscal.'}
+              </Alert>
+            )}
+
+            {selection.statutValidation === 'EN_ATTENTE_VALIDATION' && (
+              <Alert variante="avertissement" titre="Déclaration en cours d’instruction">
+                <span className="inline-flex items-center gap-2">
+                  <Info className="h-4 w-4" aria-hidden="true" />
+                  Votre déclaration sera examinée par un agent. Vous serez notifié de la décision.
+                </span>
+              </Alert>
+            )}
           </div>
-        </div>
-        {liste.items.length === 0 && <p className="mt-3 text-center text-sm text-slate-500">Aucun résultat. <button onClick={liste.clear} className="font-semibold text-primary underline">Effacer la recherche</button></p>}
-        <Pagination page={liste.page} totalPages={liste.pagination?.totalPages || 0} totalElements={liste.filteredCount} size={10} onChange={liste.setPage} />
-        </>
-      )}
+        )}
+      </Modal>
     </div>
   );
 }

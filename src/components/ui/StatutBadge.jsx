@@ -12,14 +12,14 @@ const STYLES = {
  * Affiche toujours le libelle francais d'un code technique.
  * @param {{famille: string, code: string, variante?: string}} props
  */
-export default function StatutBadge({ famille, code, variante, className = '' }) {
+export default function StatutBadge({ famille, code, variante, texte, className = '' }) {
   if (!code) return <span className="text-slate-400">—</span>;
   const ton = variante || varianteStatut(code);
   return (
     <span
       className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-semibold ${STYLES[ton] || STYLES.default} ${className}`}
     >
-      {libelle(famille, code)}
+      {texte || libelle(famille, code)}
     </span>
   );
 }

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Bell, Menu } from 'lucide-react';
 import { useAuth } from '../../context/useAuth';
-import notificationService from '../../services/notificationService';
+import notificationService, { EVENEMENT_NOTIFICATIONS_LUES } from '../../services/notificationService';
 import { LIBELLES_ROLE } from '../../utils/libelles';
 import { titrePage } from '../../routes/roleRoutes';
 
@@ -17,7 +17,14 @@ export default function Header({ onOuvrirMenu }) {
   const { utilisateur } = useAuth();
   const { pathname } = useLocation();
   const [nonLues, setNonLues] = useState(0);
+  const [rafraichissement, setRafraichissement] = useState(0);
   const estContribuable = utilisateur?.role === 'CONTRIBUABLE';
+
+  useEffect(() => {
+    const surMiseAJour = () => setRafraichissement((valeur) => valeur + 1);
+    window.addEventListener(EVENEMENT_NOTIFICATIONS_LUES, surMiseAJour);
+    return () => window.removeEventListener(EVENEMENT_NOTIFICATIONS_LUES, surMiseAJour);
+  }, []);
 
   useEffect(() => {
     if (!estContribuable || !utilisateur?.identifiant) return undefined;
@@ -42,7 +49,7 @@ export default function Header({ onOuvrirMenu }) {
       actif = false;
       window.clearInterval(minuterie);
     };
-  }, [estContribuable, utilisateur?.identifiant, pathname]);
+  }, [estContribuable, utilisateur?.identifiant, pathname, rafraichissement]);
 
   return (
     <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur">
