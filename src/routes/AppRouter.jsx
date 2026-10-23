@@ -37,6 +37,7 @@ import TypesImpotsPage from '../pages/admin/TypesImpotsPage';
 import JoursFeriesPage from '../pages/admin/JoursFeriesPage';
 import ParametresPage from '../pages/admin/ParametresPage';
 import ModelesNotificationsPage from '../pages/admin/ModelesNotificationsPage';
+import JournalAuditPage from '../pages/admin/JournalAuditPage';
 
 const TOUS_LES_AGENTS = ['AGENT_GESTION', 'AGENT_RECETTE', 'RESPONSABLE', 'ADMIN'];
 const RECETTE = ['AGENT_RECETTE', 'RESPONSABLE', 'ADMIN'];
@@ -108,6 +109,7 @@ export default function AppRouter() {
         <Route path="/admin/jours-feries" element={<AvecLayout roles={['ADMIN']}><JoursFeriesPage /></AvecLayout>} />
         <Route path="/admin/parametres" element={<AvecLayout roles={['ADMIN']}><ParametresPage /></AvecLayout>} />
         <Route path="/admin/modeles-notifications" element={<AvecLayout roles={['ADMIN']}><ModelesNotificationsPage /></AvecLayout>} />
+        <Route path="/admin/journal-audit" element={<AvecLayout roles={['ADMIN']}><JournalAuditPage /></AvecLayout>} />
 
         <Route path="*" element={<PageInconnue />} />
       </Routes>

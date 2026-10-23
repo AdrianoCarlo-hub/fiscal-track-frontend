@@ -3,8 +3,10 @@ import {
   formatDate,
   formatEcheanceRelative,
   formatMontant,
+  formatDecimal,
   formatMontantCourt,
   formatTaux,
+  formatTelephone,
   joursAvantEcheance,
 } from './formatUtils';
 
@@ -29,6 +31,18 @@ describe('formatUtils', () => {
   it('convertit un taux decimal en pourcentage', () => {
     expect(formatTaux(0.2)).toBe('20 %');
     expect(formatTaux(0.075)).toBe('7,5 %');
+  });
+
+  it('formate les numeros de telephone malgaches', () => {
+    expect(formatTelephone('+261340000005')).toBe('+261 34 000 00 05');
+    expect(formatTelephone('0340000005')).toBe('034 000 00 05');
+    expect(formatTelephone('')).toBe('—');
+  });
+
+  it('formate les valeurs decimales des parametres fiscaux', () => {
+    expect(formatDecimal(0.2)).toBe('0,2');
+    expect(sansEspacesInsecables(formatDecimal(1234567))).toBe('1 234 567');
+    expect(formatDecimal(null)).toBe('—');
   });
 
   it('calcule les jours restants avant echeance', () => {

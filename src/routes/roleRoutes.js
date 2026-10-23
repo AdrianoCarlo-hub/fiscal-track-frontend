@@ -37,6 +37,7 @@ export const TITRES_PAGES = [
   ['/admin/jours-feries', 'Jours fériés'],
   ['/admin/parametres', 'Paramètres fiscaux'],
   ['/admin/modeles-notifications', 'Modèles de notifications'],
+  ['/admin/journal-audit', 'Journal d’audit'],
 ];
 
 export function titrePage(pathname) {

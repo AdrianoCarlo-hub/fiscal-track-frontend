@@ -121,7 +121,7 @@ export function formatTelephone(telephone) {
     const chiffres = international[1];
     return `+261 ${chiffres.slice(0, 2)} ${chiffres.slice(2, 5)} ${chiffres.slice(5, 7)} ${chiffres.slice(7)}`;
   }
-  const local = valeur.match(/^0(3\d)(\d{2})(\d{2})(\d{2})$/);
+  const local = valeur.match(/^0(3\d)(\d{3})(\d{2})(\d{2})$/);
   if (local) return `0${local[1]} ${local[2]} ${local[3]} ${local[4]}`;
   return valeur;
 }

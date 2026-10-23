@@ -15,20 +15,25 @@ import { libelle } from '../../utils/libelles';
 
 async function chargerEspacePaiement(nif) {
   const comptes = await compteCourantService.parContribuable(nif);
-  const listes = await Promise.all(
-    (Array.isArray(comptes) ? comptes : []).map((compte) =>
+  const listeComptes = Array.isArray(comptes) ? comptes : [];
+  const resultats = await Promise.allSettled(
+    listeComptes.map((compte) =>
       paiementService
         .parCompte(compte.idCompte)
         .then((paiements) =>
           (Array.isArray(paiements) ? paiements : []).map((paiement) => ({ ...paiement, compte })),
-        )
-        .catch(() => []),
+        ),
     ),
   );
-  const paiements = listes
-    .flat()
+  const paiements = resultats
+    .filter((resultat) => resultat.status === 'fulfilled')
+    .flatMap((resultat) => resultat.value)
     .sort((a, b) => new Date(b.datePaiement) - new Date(a.datePaiement));
-  return { comptes: Array.isArray(comptes) ? comptes : [], paiements };
+  return {
+    comptes: listeComptes,
+    paiements,
+    comptesSansHistorique: resultats.filter((resultat) => resultat.status === 'rejected').length,
+  };
 }
 
 export default function PaiementsPage() {
@@ -38,7 +43,7 @@ export default function PaiementsPage() {
   const { data, chargement, erreur, recharger } = useApiData(
     () => chargerEspacePaiement(utilisateur.identifiant),
     [utilisateur.identifiant],
-    { valeurInitiale: { comptes: [], paiements: [] } },
+    { valeurInitiale: { comptes: [], paiements: [], comptesSansHistorique: 0 } },
   );
 
   const comptes = useMemo(() => data?.comptes || [], [data]);
@@ -177,6 +182,13 @@ export default function PaiementsPage() {
         Les paiements sont saisis par l’administration fiscale à réception de votre versement.
         Aucun paiement ne peut être déclaré directement depuis cet espace.
       </Alert>
+
+      {data?.comptesSansHistorique > 0 && (
+        <Alert variante="avertissement" titre="Historique partiel" className="mb-5">
+          L’historique de {data.comptesSansHistorique} compte(s) n’a pas pu être chargé. Les autres paiements restent
+          affichés ; actualisez la page pour réessayer.
+        </Alert>
+      )}
 
       <SectionCard padding={false}>
         <div className="px-5 pt-3">

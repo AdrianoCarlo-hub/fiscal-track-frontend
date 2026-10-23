@@ -17,6 +17,7 @@ import {
   LayoutDashboard,
   LogOut,
   Mail,
+  ScrollText,
   Settings,
   User,
   UserCog,
@@ -110,6 +111,7 @@ const MENUS = {
         ['/admin/jours-feries', 'Jours fériés', CalendarDays],
         ['/admin/parametres', 'Paramètres fiscaux', Settings],
         ['/admin/modeles-notifications', 'Modèles de notifications', Mail],
+        ['/admin/journal-audit', 'Journal d’audit', ScrollText],
       ],
     },
     {
