@@ -20,6 +20,12 @@ const contribuableService = {
 
   creer: async (data) => (await api.post('/api/contribuables', data)).data,
   modifier: async (nif, data) => (await api.put(`/api/contribuables/${nif}`, data)).data,
+  modifierPreferencesContact: async (nif, data) =>
+    (await api.put(`/api/contribuables/${nif}/preferences-contact`, data)).data,
+  acomptes: async (nif, exercice) =>
+    (await api.get(`/api/contribuables/${encodeURIComponent(nif)}/acomptes`, {
+      params: { exercice },
+    })).data,
 };
 
 export default contribuableService;

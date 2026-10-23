@@ -6,7 +6,10 @@ export default {
       colors: {
         primary: '#1E2761',
         deep: '#1E2761',
+        accent: '#C9A227',
         gold: '#C9A227',
+        surface: '#FAFAFA',
+        muted: '#5A6274',
         success: '#2F7A4F',
         warning: '#B8860B',
         danger: '#B23A33',

@@ -19,6 +19,18 @@ const adminService = {
   listerParametres: async () => (await api.get('/api/admin/parametres-fiscaux')).data,
   parametreParCode: async (code) => (await api.get(`/api/admin/parametres-fiscaux/${code}`)).data,
   modifierParametre: async (code, data) => (await api.put(`/api/admin/parametres-fiscaux/${code}`, data)).data,
+
+  // Modeles de notifications (Phase 0)
+  modelesNotifications: async () => (await api.get('/api/admin/modeles-notifications')).data,
+
+  // Journal d'audit
+  historique: async () => (await api.get('/api/admin/historique')).data,
+  historiqueParUtilisateur: async (utilisateur) =>
+    (await api.get(`/api/admin/historique/utilisateur/${encodeURIComponent(utilisateur)}`)).data,
+
+  // Taches planifiees
+  declencherScheduler: async (nom) =>
+    (await api.post(`/api/admin/scheduler/${nom}/declencher`)).data,
 };
 
 export default adminService;

@@ -3,8 +3,8 @@
 @tailwind utilities;
 
 :root {
-  color: #1E2761;
-  background-color: #FAFAFA;
+  color: theme('colors.primary');
+  background-color: theme('colors.surface');
   font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
@@ -22,8 +22,8 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  background: #FAFAFA;
-  color: #1E2761;
+  background: theme('colors.surface');
+  color: theme('colors.primary');
 }
 
 #root {
@@ -45,7 +45,7 @@ h1, h2 { font-family: Georgia, Cambria, 'Times New Roman', serif; }
     @apply bg-white;
   }
 
-  .fiscal-page-title { font-family: Georgia, Cambria, 'Times New Roman', serif; color: #1E2761; }
+  .fiscal-page-title { font-family: Georgia, Cambria, 'Times New Roman', serif; @apply text-primary; }
   .fiscal-money { font-family: Georgia, Cambria, 'Times New Roman', serif; font-variant-numeric: tabular-nums; }
 }
 

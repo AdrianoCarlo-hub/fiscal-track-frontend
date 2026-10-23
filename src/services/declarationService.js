@@ -8,6 +8,8 @@ const declarationService = {
   parId: async (id) => (await api.get(`/api/declarations/${id}`)).data,
   parObligation: async (idObligation) =>
     (await api.get(`/api/declarations/obligation/${idObligation}`)).data,
+  parContribuable: async (nif) =>
+    (await api.get(`/api/declarations/contribuable/${encodeURIComponent(nif)}`)).data,
   parStatut: async (statut) => (await api.get(`/api/declarations/statut/${statut}`)).data,
   deposer: async (data) => (await api.post('/api/declarations', data)).data,
   previsualiser: async (data) => (await api.post('/api/declarations/preview', data)).data,

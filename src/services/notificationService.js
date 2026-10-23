@@ -10,6 +10,11 @@ const notificationService = {
   envoyerEnAttente: async () =>
     (await api.post('/api/notifications/envoyer-en-attente')).data,
   envoyerUne: async (id) => (await api.post(`/api/notifications/${id}/envoyer`)).data,
+  parPortail: async (nif) =>
+    (await api.get(`/api/notifications/contribuable/${nif}/portail`)).data,
+  nonLues: async (nif) =>
+    (await api.get(`/api/notifications/contribuable/${nif}/non-lues`)).data,
+  marquerLue: async (id) => (await api.put(`/api/notifications/${id}/lu`)).data,
 };
 
 export default notificationService;
