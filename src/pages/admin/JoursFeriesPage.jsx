@@ -1,107 +1,232 @@
-import { useEffect, useState } from 'react';
+import { useMemo, useState } from 'react';
+import { CalendarCheck2, CalendarDays, Trash2 } from 'lucide-react';
 import adminService from '../../services/adminService';
-import { useListView } from '../../hooks/useApiData';
-import { ListToolbar } from '../../components/common/DataTable';
-import Pagination from '../../components/common/Pagination';
+import { useApiData, useListView } from '../../hooks/useApiData';
+import { useAsyncAction } from '../../hooks/useAsyncAction';
+import { useConfirm, useToast } from '../../context/notificationContext';
+import DataTable, { ListToolbar } from '../../components/common/DataTable';
+import PageHeader from '../../components/ui/PageHeader';
+import SectionCard from '../../components/ui/SectionCard';
+import KpiCard from '../../components/ui/KpiCard';
+import Button from '../../components/ui/Button';
+import Alert from '../../components/ui/Alert';
+import LoadingState from '../../components/ui/LoadingState';
+import ErrorState from '../../components/ui/ErrorState';
+import { Input } from '../../components/ui/FormControls';
+import { formatDate } from '../../utils/formatUtils';
+
+const AUJOURDHUI = new Date().toISOString().slice(0, 10);
 
 export default function JoursFeriesPage() {
-  const [jours, setJours] = useState([]);
-  const [chargement, setChargement] = useState(true);
-  const [form, setForm] = useState({ dateFerie: '', description: '' });
-  const [erreur, setErreur] = useState('');
-  const liste = useListView(jours);
+  const { data, chargement, erreur, recharger } = useApiData(adminService.listerJoursFeries, []);
+  const { notifier } = useToast();
+  const confirmer = useConfirm();
+  const [annee, setAnnee] = useState('');
+  const [suppressionEnCours, setSuppressionEnCours] = useState(null);
 
-  const charger = async () => {
-    setChargement(true);
+  const jours = useMemo(
+    () => [...(data || [])].sort((a, b) => String(b.dateFerie).localeCompare(String(a.dateFerie))),
+    [data],
+  );
+  const annees = useMemo(
+    () => [...new Set(jours.map((jour) => String(jour.dateFerie).slice(0, 4)))].sort((a, b) => b.localeCompare(a)),
+    [jours],
+  );
+  const joursAffiches = annee ? jours.filter((jour) => String(jour.dateFerie).startsWith(annee)) : jours;
+  const liste = useListView(joursAffiches);
+
+  const anneeCourante = String(new Date().getFullYear());
+  const dansAnneeCourante = jours.filter((jour) => String(jour.dateFerie).startsWith(anneeCourante)).length;
+  const aVenir = jours.filter((jour) => String(jour.dateFerie) >= AUJOURDHUI).length;
+
+  const supprimer = async (jour) => {
+    const confirme = await confirmer({
+      titre: 'Supprimer ce jour férié ?',
+      message: `${formatDate(jour.dateFerie)}${jour.description ? ` — ${jour.description}` : ''} ne sera plus exclu des échéances.`,
+      libelleConfirmer: 'Supprimer',
+      variante: 'danger',
+    });
+    if (!confirme) return;
+    setSuppressionEnCours(jour.idJourFerie);
     try {
-      setJours(await adminService.listerJoursFeries());
+      await adminService.supprimerJourFerie(jour.idJourFerie);
+      notifier({ titre: 'Jour férié supprimé', message: formatDate(jour.dateFerie), variante: 'succes' });
+      recharger();
     } catch (err) {
-      setErreur(err.response?.data?.message || 'Erreur');
+      notifier({ titre: 'Suppression impossible', message: err?.message, variante: 'danger' });
     } finally {
-      setChargement(false);
+      setSuppressionEnCours(null);
     }
   };
 
-  useEffect(() => {
-    Promise.resolve().then(charger);
-  }, []);
-
-  const ajouter = async (e) => {
-    e.preventDefault();
-    try {
-      await adminService.ajouterJourFerie(form);
-      setForm({ dateFerie: '', description: '' });
-      charger();
-    } catch (err) {
-      alert(err.response?.data?.message || 'Erreur');
-    }
-  };
-
-  const supprimer = async (id) => {
-    if (!window.confirm('Supprimer ce jour ferie ?')) return;
-    try {
-      await adminService.supprimerJourFerie(id);
-      charger();
-    } catch (err) {
-      alert(err.response?.data?.message || 'Erreur');
-    }
-  };
+  const colonnes = [
+    {
+      cle: 'dateFerie',
+      label: 'Date',
+      render: (jour) => (
+        <div>
+          <p className="font-medium text-slate-800">{formatDate(jour.dateFerie)}</p>
+          <p className="text-xs text-slate-500">
+            {new Date(`${jour.dateFerie}T00:00:00`).toLocaleDateString('fr-FR', { weekday: 'long' })}
+          </p>
+        </div>
+      ),
+    },
+    { cle: 'description', label: 'Description', render: (jour) => jour.description || '—' },
+    {
+      cle: 'actions',
+      label: 'Action',
+      align: 'right',
+      render: (jour) => (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="text-danger hover:bg-danger/5"
+          chargement={suppressionEnCours === jour.idJourFerie}
+          onClick={() => supprimer(jour)}
+        >
+          <Trash2 className="h-3.5 w-3.5" aria-hidden="true" /> Supprimer
+        </Button>
+      ),
+    },
+  ];
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-slate-800 mb-6">Jours feries</h1>
+      <PageHeader
+        titre="Jours fériés"
+        description="Dates non ouvrables exclues du calcul des échéances légales."
+        fil={[{ libelle: 'Espace administrateur' }, { libelle: 'Jours fériés' }]}
+      />
 
-      <form onSubmit={ajouter} className="fiscal-card mb-6 flex flex-col items-stretch gap-3 p-4 sm:flex-row sm:items-end">
-        <div>
-          <label className="block text-sm mb-1">Date</label>
-          <input type="date" required value={form.dateFerie}
-            onChange={(e) => setForm({ ...form, dateFerie: e.target.value })}
-            className="px-3 py-2 border border-slate-300 rounded-lg" />
-        </div>
-        <div className="flex-1">
-          <label className="block text-sm mb-1">Description</label>
-          <input type="text" value={form.description}
-            onChange={(e) => setForm({ ...form, description: e.target.value })}
-            className="w-full px-3 py-2 border border-slate-300 rounded-lg" />
-        </div>
-        <button type="submit" className="bg-sky-500 hover:bg-sky-600 text-white px-4 py-2 rounded-lg">
-          Ajouter
-        </button>
-      </form>
+      <div className="mb-5 grid gap-3 sm:grid-cols-3">
+        <KpiCard title="Jours fériés enregistrés" value={jours.length} icon={CalendarDays} />
+        <KpiCard title={`Année ${anneeCourante}`} value={dansAnneeCourante} icon={CalendarCheck2} tone="success" />
+        <KpiCard title="À venir" value={aVenir} icon={CalendarDays} tone="warning" />
+      </div>
 
-      {chargement && <p>Chargement...</p>}
-      {erreur && <div className="bg-red-50 text-red-700 p-4 rounded-lg">{erreur}</div>}
+      <div className="mb-5">
+        <SectionCard
+          titre="Ajouter un jour férié"
+          description="La date doit être unique. Le report des échéances est appliqué automatiquement."
+        >
+          <FormulaireJourFerie
+            onAjoute={(jour) => {
+              notifier({
+                titre: 'Jour férié ajouté',
+                message: `${formatDate(jour.dateFerie)}${jour.description ? ` — ${jour.description}` : ''}`,
+                variante: 'succes',
+              });
+              recharger();
+            }}
+          />
+        </SectionCard>
+      </div>
+
+      {chargement && <LoadingState lignes={3} />}
+
+      {!chargement && erreur && <ErrorState erreur={erreur} onReessayer={recharger} />}
 
       {!chargement && !erreur && (
         <>
-        <div className="mb-4"><ListToolbar value={liste.query} onChange={liste.setQuery} placeholder="Rechercher une date ou une description…" count={liste.filteredCount} /></div>
-        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-          <div className="overflow-x-auto"><table className="w-full min-w-[520px]">
-            <thead className="bg-slate-100 text-slate-600 text-sm">
-              <tr>
-                <th className="text-left px-4 py-3">Date</th>
-                <th className="text-left px-4 py-3">Description</th>
-                <th className="text-right px-4 py-3">Action</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {liste.items.map((j) => (
-                <tr key={j.idJourFerie} className="hover:bg-slate-50">
-                  <td className="px-4 py-3 font-mono text-sm">{j.dateFerie}</td>
-                  <td className="px-4 py-3">{j.description}</td>
-                  <td className="px-4 py-3 text-right">
-                    <button onClick={() => supprimer(j.idJourFerie)}
-                      className="text-red-600 hover:text-red-700 text-sm">Supprimer</button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table></div>
-        </div>
-        {liste.items.length === 0 && <p className="mt-3 text-center text-sm text-slate-500">Aucun résultat. <button onClick={liste.clear} className="font-semibold text-primary underline">Effacer la recherche</button></p>}
-        <Pagination page={liste.page} totalPages={liste.pagination?.totalPages || 0} totalElements={liste.filteredCount} size={10} onChange={liste.setPage} />
+          <ListToolbar
+            value={liste.query}
+            onChange={liste.setQuery}
+            placeholder="Rechercher une date ou une description…"
+            count={liste.filteredCount}
+            actions={
+              <select
+                aria-label="Filtrer par année"
+                value={annee}
+                onChange={(event) => setAnnee(event.target.value)}
+                className="rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/15"
+              >
+                <option value="">Toutes les années</option>
+                {annees.map((valeur) => (
+                  <option key={valeur} value={valeur}>
+                    {valeur}
+                  </option>
+                ))}
+              </select>
+            }
+          />
+
+          <DataTable
+            colonnes={colonnes}
+            donnees={liste.items}
+            pagination={liste.pagination}
+            onPageChange={liste.setPage}
+            rechercheActive={Boolean(liste.query || annee)}
+            onEffacerRecherche={() => {
+              liste.clear();
+              setAnnee('');
+            }}
+            titreVide="Aucun jour férié"
+            descriptionVide="Ajoutez les jours non ouvrables pour ajuster les échéances."
+            cleLigne={(jour) => jour.idJourFerie}
+          />
         </>
       )}
     </div>
+  );
+}
+
+function FormulaireJourFerie({ onAjoute }) {
+  const [form, setForm] = useState({ dateFerie: '', description: '' });
+  const [erreursLocales, setErreursLocales] = useState({});
+
+  const { executer, enCours, erreur, champs, reinitialiser } = useAsyncAction(
+    () => adminService.ajouterJourFerie({ dateFerie: form.dateFerie, description: form.description.trim() || null }),
+    {
+      onSucces: (jour) => {
+        setForm({ dateFerie: '', description: '' });
+        setErreursLocales({});
+        reinitialiser();
+        onAjoute(jour);
+      },
+    },
+  );
+
+  const soumettre = (event) => {
+    event.preventDefault();
+    const erreurs = {};
+    if (!form.dateFerie) erreurs.dateFerie = 'La date est obligatoire.';
+    if (form.description.length > 150) erreurs.description = '150 caractères maximum.';
+    setErreursLocales(erreurs);
+    if (Object.keys(erreurs).length > 0) return;
+    executer();
+  };
+
+  return (
+    <form onSubmit={soumettre} className="space-y-4" noValidate>
+      {erreur && (
+        <Alert variante="danger" titre="Ajout impossible">
+          {erreur.message}
+        </Alert>
+      )}
+      <div className="grid items-end gap-4 sm:grid-cols-[1fr_2fr_auto]">
+        <Input
+          id="dateFerie"
+          type="date"
+          label="Date"
+          obligatoire
+          value={form.dateFerie}
+          onChange={(event) => setForm({ ...form, dateFerie: event.target.value })}
+          erreur={erreursLocales.dateFerie || champs.dateFerie}
+        />
+        <Input
+          id="descriptionJourFerie"
+          label="Description"
+          value={form.description}
+          onChange={(event) => setForm({ ...form, description: event.target.value })}
+          placeholder="Fête nationale, jour férié légal…"
+          erreur={erreursLocales.description || champs.description}
+          aide="Facultative, utile pour identifier le jour férié."
+        />
+        <Button type="submit" chargement={enCours} className="sm:mb-6">
+          Ajouter
+        </Button>
+      </div>
+    </form>
   );
 }

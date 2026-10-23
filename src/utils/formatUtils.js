@@ -36,6 +36,12 @@ export function formatMontantCourt(montant) {
   return formatMontant(valeur);
 }
 
+/** Nombre decimal sans devise, jusqu'a 4 decimales (parametres fiscaux). */
+export function formatDecimal(valeur) {
+  if (!estNombre(valeur)) return '—';
+  return new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 4 }).format(Number(valeur));
+}
+
 export function formatNombre(valeur) {
   if (!estNombre(valeur)) return '0';
   return NOMBRE_MONTANT.format(Number(valeur));
@@ -104,6 +110,20 @@ export function formatEcheanceRelative(echeance, aujourdhui = new Date()) {
   if (jours > 0) return `Dans ${jours} jour${jours > 1 ? 's' : ''}`;
   const retard = Math.abs(jours);
   return `En retard de ${retard} jour${retard > 1 ? 's' : ''}`;
+}
+
+/** "+261340000005" -> "+261 34 000 00 05" (affichage seulement). */
+export function formatTelephone(telephone) {
+  if (!telephone) return '—';
+  const valeur = String(telephone).replace(/\s/g, '');
+  const international = valeur.match(/^\+261(\d{9})$/);
+  if (international) {
+    const chiffres = international[1];
+    return `+261 ${chiffres.slice(0, 2)} ${chiffres.slice(2, 5)} ${chiffres.slice(5, 7)} ${chiffres.slice(7)}`;
+  }
+  const local = valeur.match(/^0(3\d)(\d{2})(\d{2})(\d{2})$/);
+  if (local) return `0${local[1]} ${local[2]} ${local[3]} ${local[4]}`;
+  return valeur;
 }
 
 export function tronquer(texte, longueur = 80) {
