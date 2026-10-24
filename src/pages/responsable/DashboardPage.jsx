@@ -1,100 +1,261 @@
-import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import {
+  AlertTriangle,
+  ArrowUpRight,
+  Banknote,
+  CircleDollarSign,
+  FileBarChart,
+  FileCheck2,
+  Landmark,
+  UserRound,
+} from 'lucide-react';
 import dashboardService from '../../services/dashboardService';
 import ConformiteChart from '../../components/charts/ConformiteChart';
+import KpiCard from '../../components/ui/KpiCard';
+import PageHeader from '../../components/ui/PageHeader';
+import SectionCard from '../../components/ui/SectionCard';
+import DetailList from '../../components/ui/DetailList';
+import Alert from '../../components/ui/Alert';
+import LoadingState from '../../components/ui/LoadingState';
+import ErrorState from '../../components/ui/ErrorState';
+import { useApiData } from '../../hooks/useApiData';
+import { formatMontant, formatPourcentage } from '../../utils/formatUtils';
 
 export default function DashboardPage() {
-  const [indicateurs, setIndicateurs] = useState(null);
-  const [top10, setTop10] = useState([]);
-  const [chargement, setChargement] = useState(true);
-  const [erreur, setErreur] = useState('');
-
-  useEffect(() => {
-    const charger = async () => {
-      try {
-        const [ind, top] = await Promise.all([
-          dashboardService.indicateurs(),
-          dashboardService.top10Restes(),
-        ]);
-        setIndicateurs(ind);
-        setTop10(top);
-      } catch (err) {
-        setErreur(err.response?.data?.message || 'Erreur de chargement');
-      } finally {
-        setChargement(false);
-      }
-    };
-    charger();
+  const { data, chargement, erreur, recharger } = useApiData(async () => {
+    const [indicateurs, top10] = await Promise.all([
+      dashboardService.indicateurs(),
+      dashboardService.top10Restes(),
+    ]);
+    return { indicateurs, top10 };
   }, []);
 
-  if (chargement) return <p>Chargement...</p>;
-  if (erreur) return <div className="bg-red-50 text-red-700 p-4 rounded-lg">{erreur}</div>;
+  const entete = (
+    <PageHeader
+      titre="Tableau de bord"
+      description="Vue générale de la situation fiscale du centre : recettes, conformité et recouvrement."
+      fil={[{ libelle: 'Espace responsable' }, { libelle: 'Tableau de bord' }]}
+      actions={
+        <>
+          <Link
+            to="/responsable/retards"
+            className="inline-flex items-center justify-center rounded-lg border border-primary/20 bg-primary/10 px-4 py-2.5 text-sm font-medium text-primary transition hover:bg-primary/15"
+          >
+            Voir les retards
+          </Link>
+          <Link
+            to="/responsable/rapports"
+            className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-primary/90"
+          >
+            <FileBarChart className="h-4 w-4" aria-hidden="true" />
+            Rapports
+          </Link>
+        </>
+      }
+    />
+  );
 
-  const formatMontant = (m) =>
-    new Intl.NumberFormat('fr-MG', { style: 'currency', currency: 'MGA', maximumFractionDigits: 0 })
-      .format(m || 0);
+  if (chargement) {
+    return (
+      <div>
+        {entete}
+        <LoadingState lignes={6} />
+      </div>
+    );
+  }
+
+  if (erreur) {
+    return (
+      <div>
+        {entete}
+        <ErrorState erreur={erreur} onReessayer={recharger} />
+      </div>
+    );
+  }
+
+  const { indicateurs, top10 } = data;
+  const totalObligations = Number(indicateurs.totalObligations || 0);
+  const montantDu = Number(indicateurs.montantTotalDu || 0);
+  const montantPaye = Number(indicateurs.montantTotalPaye || 0);
+  const pourcentagePaye = montantDu > 0 ? Math.round((montantPaye / montantDu) * 100) : 0;
+  const pourcentageRetard =
+    totalObligations > 0
+      ? Math.round((Number(indicateurs.obligationsEnRetard || 0) / totalObligations) * 100)
+      : 0;
+
+  const kpis = [
+    { titre: 'Contribuables', valeur: indicateurs.nombreContribuables, icone: UserRound },
+    { titre: 'Obligations', valeur: indicateurs.totalObligations, icone: FileCheck2 },
+    { titre: 'Montant dû', valeur: formatMontant(indicateurs.montantTotalDu), icone: CircleDollarSign },
+    { titre: 'Montant payé', valeur: formatMontant(indicateurs.montantTotalPaye), icone: Banknote, tone: 'success' },
+    {
+      titre: 'À recouvrer',
+      valeur: formatMontant(indicateurs.montantTotalARecouvrer),
+      icone: AlertTriangle,
+      tone: 'danger',
+    },
+    {
+      titre: 'Taux de conformité',
+      valeur: formatPourcentage(indicateurs.tauxConformite),
+      icone: Landmark,
+      tone: 'success',
+    },
+  ];
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-slate-800 mb-6">Tableau de bord</h1>
+      {entete}
 
-      <div className="grid grid-cols-4 gap-4 mb-6">
-        <KPI label="Contribuables" value={indicateurs.nombreContribuables} color="bg-sky-500" />
-        <KPI label="Obligations" value={indicateurs.totalObligations} color="bg-indigo-500" />
-        <KPI label="En retard" value={indicateurs.obligationsEnRetard} color="bg-red-500" />
-        <KPI label="Conformite" value={`${indicateurs.tauxConformite}%`} color="bg-green-500" />
+      <div className="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        {kpis.map((item) => (
+          <KpiCard
+            key={item.titre}
+            title={item.titre}
+            value={item.valeur}
+            icon={item.icone}
+            tone={item.tone}
+          />
+        ))}
       </div>
 
-      <div className="grid grid-cols-3 gap-4 mb-6">
-        <MontantCard label="Montant total du" value={formatMontant(indicateurs.montantTotalDu)} />
-        <MontantCard label="Montant total paye" value={formatMontant(indicateurs.montantTotalPaye)} />
-        <MontantCard label="A recouvrer" value={formatMontant(indicateurs.montantTotalARecouvrer)} highlight />
+      <div className="mb-6 grid gap-4 xl:grid-cols-3">
+        <div className="xl:col-span-2">
+          <SectionCard
+            titre="Situation financière"
+            description="Montants dus, encaissés et restant à recouvrer (Ariary)."
+          >
+            <div className="grid gap-4 md:grid-cols-3">
+              <MontantCard libelle="Montant total dû" valeur={formatMontant(indicateurs.montantTotalDu)} />
+              <MontantCard
+                libelle="Montant payé"
+                valeur={formatMontant(indicateurs.montantTotalPaye)}
+                variante="succes"
+              />
+              <MontantCard
+                libelle="Reste à recouvrer"
+                valeur={formatMontant(indicateurs.montantTotalARecouvrer)}
+                variante="danger"
+              />
+            </div>
+          </SectionCard>
+        </div>
+
+        <SectionCard titre="Indicateurs de suivi" description="Progression calculée depuis les totaux disponibles.">
+          <div className="space-y-5">
+            <Jauge
+              libelle="Montant dû déjà payé"
+              valeur={pourcentagePaye}
+              ton="bg-primary"
+            />
+            <Jauge
+              libelle="Taux de conformité"
+              valeur={Number(indicateurs.tauxConformite || 0)}
+              ton="bg-success"
+            />
+            <Jauge
+              libelle="Obligations en retard"
+              valeur={pourcentageRetard}
+              texte={`${indicateurs.obligationsEnRetard || 0} · ${pourcentageRetard} %`}
+              ton="bg-danger"
+            />
+          </div>
+        </SectionCard>
       </div>
 
-      <div className="grid grid-cols-2 gap-6">
-        <div className="bg-white p-6 rounded-xl shadow-sm">
-          <h2 className="font-bold text-slate-800 mb-4">Repartition des obligations</h2>
+      {Number(indicateurs.obligationsEnRetard || 0) > 0 && (
+        <Alert variante="avertissement" titre="Actions nécessaires" className="mb-6">
+          {indicateurs.obligationsEnRetard} obligation(s) en retard et {indicateurs.obligationsEnAttente || 0} en
+          attente de dépôt nécessitent un suivi.{' '}
+          <Link to="/responsable/retards" className="font-semibold underline">
+            Consulter les retards
+          </Link>
+        </Alert>
+      )}
+
+      <div className="mb-6 grid gap-6 xl:grid-cols-2">
+        <SectionCard titre="Situation des obligations" description="Répartition des obligations selon leur statut.">
           <ConformiteChart data={indicateurs} />
-        </div>
+        </SectionCard>
 
-        <div className="bg-white p-6 rounded-xl shadow-sm">
-          <h2 className="font-bold text-slate-800 mb-4">Top 10 restes a recouvrer</h2>
-          <table className="w-full text-sm">
-            <thead className="text-slate-500 text-xs">
-              <tr>
-                <th className="text-left py-2">NIF</th>
-                <th className="text-right py-2">Reste</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {top10.map((c) => (
-                <tr key={c.idCompte}>
-                  <td className="py-2 font-mono text-xs">{c.nif}</td>
-                  <td className="py-2 text-right font-medium">{formatMontant(c.resteARecouvrer)}</td>
-                </tr>
+        <SectionCard
+          titre="Plus importants restes à recouvrer"
+          description="Contribuables dont les soldes dus sont les plus élevés."
+          actions={
+            <Link
+              to="/responsable/recouvrement"
+              className="inline-flex items-center gap-1 text-sm font-semibold text-primary hover:underline"
+            >
+              Tout voir <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
+            </Link>
+          }
+        >
+          {top10.length === 0 ? (
+            <p className="py-8 text-center text-sm text-slate-500">Aucun reste à recouvrer.</p>
+          ) : (
+            <ul className="divide-y divide-slate-100">
+              {top10.slice(0, 5).map((compte) => (
+                <li key={compte.idCompte} className="flex items-center justify-between gap-4 py-2.5">
+                  <Link
+                    to={`/agent/dossiers/${compte.nif}`}
+                    className="font-mono text-xs text-primary hover:underline"
+                  >
+                    {compte.nif}
+                  </Link>
+                  <span className="text-sm font-semibold text-slate-800">
+                    {formatMontant(compte.resteARecouvrer)}
+                  </span>
+                </li>
               ))}
-            </tbody>
-          </table>
-        </div>
+            </ul>
+          )}
+        </SectionCard>
       </div>
+
+      <SectionCard titre="Indicateurs détaillés" description="Ensemble des compteurs renvoyés par le tableau de bord.">
+        <DetailList
+          colonnes={3}
+          elements={[
+            { libelle: 'Contribuables', valeur: indicateurs.nombreContribuables },
+            { libelle: 'Total obligations', valeur: indicateurs.totalObligations },
+            { libelle: 'Obligations déposées', valeur: indicateurs.obligationsDeposees },
+            { libelle: 'Obligations en attente', valeur: indicateurs.obligationsEnAttente },
+            { libelle: 'Obligations en retard', valeur: indicateurs.obligationsEnRetard },
+            { libelle: 'Taux de conformité', valeur: formatPourcentage(indicateurs.tauxConformite) },
+            { libelle: 'Montant total dû', valeur: formatMontant(indicateurs.montantTotalDu) },
+            { libelle: 'Montant total payé', valeur: formatMontant(indicateurs.montantTotalPaye) },
+            { libelle: 'Montant à recouvrer', valeur: formatMontant(indicateurs.montantTotalARecouvrer) },
+          ]}
+        />
+      </SectionCard>
     </div>
   );
 }
 
-function KPI({ label, value, color }) {
+function MontantCard({ libelle, valeur, variante = 'neutre' }) {
+  const variantes = {
+    neutre: 'border-slate-200 bg-slate-50 text-slate-800',
+    succes: 'border-success/20 bg-success/10 text-success',
+    danger: 'border-danger/20 bg-danger/10 text-danger',
+  };
   return (
-    <div className="bg-white p-5 rounded-xl shadow-sm">
-      <div className={`w-10 h-1 ${color} rounded mb-3`}></div>
-      <p className="text-slate-500 text-xs uppercase">{label}</p>
-      <p className="text-2xl font-bold text-slate-800 mt-1">{value}</p>
+    <div className={`rounded-xl border p-4 ${variantes[variante]}`}>
+      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{libelle}</p>
+      <p className="fiscal-money mt-2 text-xl font-semibold">{valeur}</p>
     </div>
   );
 }
 
-function MontantCard({ label, value, highlight }) {
+function Jauge({ libelle, valeur, texte, ton }) {
+  const pourcentage = Math.min(100, Math.max(0, Number(valeur) || 0));
   return (
-    <div className={`p-5 rounded-xl shadow-sm ${highlight ? 'bg-sky-500 text-white' : 'bg-white'}`}>
-      <p className={`text-xs uppercase ${highlight ? 'text-sky-100' : 'text-slate-500'}`}>{label}</p>
-      <p className={`text-xl font-bold mt-1 ${highlight ? 'text-white' : 'text-slate-800'}`}>{value}</p>
+    <div>
+      <div className="mb-2 flex items-center justify-between text-sm text-slate-600">
+        <span>{libelle}</span>
+        <span className="font-semibold text-slate-800">{texte || `${pourcentage} %`}</span>
+      </div>
+      <div className="h-2.5 overflow-hidden rounded-full bg-slate-100">
+        <div className={`h-2.5 rounded-full ${ton}`} style={{ width: `${pourcentage}%` }} />
+      </div>
     </div>
   );
 }

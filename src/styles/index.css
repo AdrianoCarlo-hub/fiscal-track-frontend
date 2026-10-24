@@ -2,13 +2,73 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  color: theme('colors.primary');
+  background-color: theme('colors.surface');
+  font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
 body {
   margin: 0;
-  font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-  background-color: #f8fafc;
-  color: #0f172a;
+  min-width: 320px;
+  min-height: 100vh;
+  background: theme('colors.surface');
+  color: theme('colors.primary');
+}
+
+#root {
+  min-height: 100vh;
 }
 
 * {
   box-sizing: border-box;
+}
+
+h1, h2 { font-family: Georgia, Cambria, 'Times New Roman', serif; }
+
+@layer components {
+  .fiscal-card {
+    @apply rounded-xl border border-slate-200 bg-white shadow-[0_2px_8px_rgba(30,39,97,0.035)];
+  }
+
+  .fiscal-surface {
+    @apply bg-white;
+  }
+
+  .fiscal-page-title { font-family: Georgia, Cambria, 'Times New Roman', serif; @apply text-primary; }
+  .fiscal-money { font-family: Georgia, Cambria, 'Times New Roman', serif; font-variant-numeric: tabular-nums; }
+}
+
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
 }

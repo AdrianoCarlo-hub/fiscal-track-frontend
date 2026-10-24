@@ -1,223 +1,372 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { Pencil, ShieldCheck, Trash2, UserPlus, Users } from 'lucide-react';
 import adminService from '../../services/adminService';
+import { useApiData, useListView } from '../../hooks/useApiData';
+import { useAsyncAction } from '../../hooks/useAsyncAction';
+import { useConfirm, useToast } from '../../context/notificationContext';
+import DataTable, { ListToolbar } from '../../components/common/DataTable';
+import PageHeader from '../../components/ui/PageHeader';
+import KpiCard from '../../components/ui/KpiCard';
+import Modal from '../../components/ui/Modal';
+import Button from '../../components/ui/Button';
+import Alert from '../../components/ui/Alert';
+import LoadingState from '../../components/ui/LoadingState';
+import ErrorState from '../../components/ui/ErrorState';
+import { Input, Select } from '../../components/ui/FormControls';
+import { libelle, options } from '../../utils/libelles';
+import { formatTelephone } from '../../utils/formatUtils';
 
-const DIVISIONS = ['ACCUEIL', 'GESTION', 'RECETTE', 'CONTROLE', 'DIRECTEUR'];
-const ROLES = ['AGENT_GESTION', 'AGENT_RECETTE', 'RESPONSABLE', 'ADMIN'];
+const DIVISIONS = options('division');
+const ROLES = options('role').filter((role) => role.code !== 'CONTRIBUABLE');
 
 export default function UtilisateursPage() {
-  const [utilisateurs, setUtilisateurs] = useState([]);
-  const [chargement, setChargement] = useState(true);
-  const [erreur, setErreur] = useState('');
-  const [modalOuvert, setModalOuvert] = useState(false);
+  const { data, chargement, erreur, recharger } = useApiData(adminService.listerUtilisateurs, []);
+  const liste = useListView(data || []);
+  const { notifier } = useToast();
+  const confirmer = useConfirm();
+  const [modal, setModal] = useState(null);
+  const [suppressionEnCours, setSuppressionEnCours] = useState(null);
 
-  const chargerUtilisateurs = async () => {
-    setChargement(true);
-    setErreur('');
+  const utilisateurs = data || [];
+  const administrateurs = utilisateurs.filter((u) => u.roleSecurite === 'ADMIN').length;
+  const divisions = new Set(utilisateurs.map((u) => u.division)).size;
+
+  const supprimer = async (utilisateur) => {
+    const confirme = await confirmer({
+      titre: 'Supprimer cet utilisateur ?',
+      message: `L’agent ${utilisateur.idAgent} (${utilisateur.emailAgent}) ne pourra plus se connecter. Cette action est irréversible.`,
+      libelleConfirmer: 'Supprimer',
+      variante: 'danger',
+    });
+    if (!confirme) return;
+    setSuppressionEnCours(utilisateur.idAgent);
     try {
-      const data = await adminService.listerUtilisateurs();
-      setUtilisateurs(data);
+      await adminService.supprimerUtilisateur(utilisateur.idAgent);
+      notifier({ titre: 'Utilisateur supprimé', message: `${utilisateur.idAgent} a été supprimé.`, variante: 'succes' });
+      recharger();
     } catch (err) {
-      setErreur(err.response?.data?.message || 'Erreur de chargement');
+      notifier({
+        titre: 'Suppression impossible',
+        message: err?.message || 'Une erreur est survenue.',
+        variante: 'danger',
+      });
     } finally {
-      setChargement(false);
+      setSuppressionEnCours(null);
     }
   };
 
-  useEffect(() => {
-    chargerUtilisateurs();
-  }, []);
-
-  const supprimer = async (idAgent) => {
-    if (!window.confirm(`Supprimer l'agent ${idAgent} ?`)) return;
-    try {
-      await adminService.supprimerUtilisateur(idAgent);
-      chargerUtilisateurs();
-    } catch (err) {
-      alert(err.response?.data?.message || 'Erreur de suppression');
-    }
-  };
+  const colonnes = [
+    { cle: 'idAgent', label: 'Identifiant', render: (u) => <span className="font-mono text-xs">{u.idAgent}</span> },
+    {
+      cle: 'nomAgent',
+      label: 'Agent',
+      render: (u) => (
+        <div>
+          <p className="font-medium text-slate-800">
+            {u.prenomAgent} {u.nomAgent}
+          </p>
+          <p className="text-xs text-slate-500">{u.emailAgent}</p>
+        </div>
+      ),
+    },
+    {
+      cle: 'telephoneAgent',
+      label: 'Téléphone',
+      render: (u) => <span className="text-sm text-slate-600">{formatTelephone(u.telephoneAgent)}</span>,
+    },
+    { cle: 'division', label: 'Division', render: (u) => libelle('division', u.division) },
+    {
+      cle: 'roleSecurite',
+      label: 'Rôle',
+      render: (u) => (
+        <span
+          className={`inline-flex rounded-md border px-2 py-0.5 text-xs font-semibold ${
+            u.roleSecurite === 'ADMIN'
+              ? 'border-danger/25 bg-danger/10 text-danger'
+              : 'border-primary/20 bg-primary/10 text-primary'
+          }`}
+        >
+          {libelle('role', u.roleSecurite)}
+        </span>
+      ),
+    },
+    {
+      cle: 'actions',
+      label: 'Actions',
+      align: 'right',
+      render: (u) => (
+        <div className="flex justify-end gap-1">
+          <Button variant="ghost" size="sm" onClick={() => setModal({ mode: 'edition', utilisateur: u })}>
+            <Pencil className="h-3.5 w-3.5" aria-hidden="true" /> Modifier
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-danger hover:bg-danger/5"
+            chargement={suppressionEnCours === u.idAgent}
+            onClick={() => supprimer(u)}
+          >
+            <Trash2 className="h-3.5 w-3.5" aria-hidden="true" /> Supprimer
+          </Button>
+        </div>
+      ),
+    },
+  ];
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-800">Gestion des utilisateurs</h1>
-          <p className="text-slate-500 text-sm mt-1">{utilisateurs.length} agent(s) enregistre(s)</p>
-        </div>
-        <button
-          onClick={() => setModalOuvert(true)}
-          className="bg-sky-500 hover:bg-sky-600 text-white px-4 py-2 rounded-lg transition"
-        >
-          + Nouvel utilisateur
-        </button>
-      </div>
+      <PageHeader
+        titre="Gestion des utilisateurs"
+        description="Créez et modifiez les comptes des agents fiscaux, leurs divisions et leurs rôles."
+        fil={[{ libelle: 'Espace administrateur' }, { libelle: 'Utilisateurs' }]}
+        actions={
+          <Button onClick={() => setModal({ mode: 'creation' })}>
+            <UserPlus className="h-4 w-4" aria-hidden="true" /> Nouvel utilisateur
+          </Button>
+        }
+      />
 
-      {chargement && <p className="text-slate-500">Chargement...</p>}
-      {erreur && <div className="bg-red-50 text-red-700 p-4 rounded-lg">{erreur}</div>}
+      {chargement && <LoadingState lignes={3} />}
+
+      {!chargement && erreur && <ErrorState erreur={erreur} onReessayer={recharger} />}
 
       {!chargement && !erreur && (
-        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-          <table className="w-full">
-            <thead className="bg-slate-100 text-slate-600 text-sm">
-              <tr>
-                <th className="text-left px-4 py-3">ID</th>
-                <th className="text-left px-4 py-3">Nom</th>
-                <th className="text-left px-4 py-3">Email</th>
-                <th className="text-left px-4 py-3">Division</th>
-                <th className="text-left px-4 py-3">Role</th>
-                <th className="text-right px-4 py-3">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {utilisateurs.map((u) => (
-                <tr key={u.idAgent} className="hover:bg-slate-50">
-                  <td className="px-4 py-3 font-mono text-sm">{u.idAgent}</td>
-                  <td className="px-4 py-3">{u.nomAgent} {u.prenomAgent}</td>
-                  <td className="px-4 py-3 text-sm text-slate-600">{u.emailAgent}</td>
-                  <td className="px-4 py-3">
-                    <span className="bg-slate-100 text-slate-700 text-xs px-2 py-1 rounded">
-                      {u.division}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className="bg-sky-100 text-sky-700 text-xs px-2 py-1 rounded">
-                      {u.roleSecurite}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <button
-                      onClick={() => supprimer(u.idAgent)}
-                      className="text-red-600 hover:text-red-700 text-sm font-medium"
-                    >
-                      Supprimer
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <>
+          <div className="mb-5 grid gap-3 sm:grid-cols-3">
+            <KpiCard title="Agents enregistrés" value={utilisateurs.length} icon={Users} />
+            <KpiCard title="Administrateurs" value={administrateurs} icon={ShieldCheck} tone="danger" />
+            <KpiCard title="Divisions représentées" value={divisions} icon={Users} tone="success" />
+          </div>
+
+          <Alert variante="info" titre="Comptes et sécurité" className="mb-5">
+            Le mot de passe est chiffré côté serveur et n’est jamais renvoyé. À la modification, laissez le champ
+            vide pour conserver le mot de passe actuel.
+          </Alert>
+
+          <ListToolbar
+            value={liste.query}
+            onChange={liste.setQuery}
+            placeholder="Rechercher par nom, identifiant, e-mail, division ou rôle…"
+            count={liste.filteredCount}
+          />
+
+          <DataTable
+            colonnes={colonnes}
+            donnees={liste.items}
+            pagination={liste.pagination}
+            onPageChange={liste.setPage}
+            rechercheActive={Boolean(liste.query)}
+            onEffacerRecherche={liste.clear}
+            titreVide="Aucun utilisateur"
+            descriptionVide="Créez un premier compte agent pour commencer."
+            cleLigne={(u) => u.idAgent}
+          />
+        </>
       )}
 
-      {modalOuvert && (
-        <ModalNouvelUtilisateur
-          onClose={() => setModalOuvert(false)}
-          onSuccess={() => {
-            setModalOuvert(false);
-            chargerUtilisateurs();
-          }}
-        />
-      )}
+      <Modal
+        ouvert={Boolean(modal)}
+        onClose={() => setModal(null)}
+        titre={modal?.mode === 'edition' ? 'Modifier l’utilisateur' : 'Nouvel utilisateur'}
+        description={
+          modal?.mode === 'edition'
+            ? `Compte ${modal.utilisateur.idAgent}`
+            : 'L’identifiant doit comporter 6 caractères alphanumériques en majuscules.'
+        }
+      >
+        {modal && (
+          <FormulaireUtilisateur
+            utilisateur={modal.mode === 'edition' ? modal.utilisateur : null}
+            onFermer={() => setModal(null)}
+            onEnregistre={(message) => {
+              setModal(null);
+              notifier({ titre: 'Utilisateur enregistré', message, variante: 'succes' });
+              recharger();
+            }}
+          />
+        )}
+      </Modal>
     </div>
   );
 }
 
-function ModalNouvelUtilisateur({ onClose, onSuccess }) {
+function FormulaireUtilisateur({ utilisateur, onFermer, onEnregistre }) {
+  const edition = Boolean(utilisateur);
   const [form, setForm] = useState({
-    idAgent: '',
-    nomAgent: '',
-    prenomAgent: '',
-    emailAgent: '',
-    telephoneAgent: '',
-    motDePasseHashAgent: '',
-    division: 'GESTION',
-    roleSecurite: 'AGENT_GESTION',
+    idAgent: utilisateur?.idAgent || '',
+    nomAgent: utilisateur?.nomAgent || '',
+    prenomAgent: utilisateur?.prenomAgent || '',
+    emailAgent: utilisateur?.emailAgent || '',
+    telephoneAgent: utilisateur?.telephoneAgent || '',
+    motDePasse: '',
+    division: utilisateur?.division || 'GESTION',
+    roleSecurite: utilisateur?.roleSecurite || 'AGENT_GESTION',
   });
-  const [erreur, setErreur] = useState('');
+  const [erreursLocales, setErreursLocales] = useState({});
 
-  const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
-  };
+  const { executer, enCours, erreur, champs } = useAsyncAction(
+    async () => {
+      const payload = {
+        idAgent: form.idAgent.trim().toUpperCase(),
+        nomAgent: form.nomAgent.trim(),
+        prenomAgent: form.prenomAgent.trim(),
+        emailAgent: form.emailAgent.trim(),
+        telephoneAgent: form.telephoneAgent.trim(),
+        division: form.division,
+        roleSecurite: form.roleSecurite,
+      };
+      if (form.motDePasse) payload.motDePasseHashAgent = form.motDePasse;
+      if (edition) {
+        delete payload.idAgent;
+        return adminService.modifierUtilisateur(utilisateur.idAgent, payload);
+      }
+      return adminService.ajouterUtilisateur(payload);
+    },
+    {
+      onSucces: () =>
+        onEnregistre(
+          edition ? `Le compte ${utilisateur.idAgent} a été mis à jour.` : `Le compte ${form.idAgent} a été créé.`,
+        ),
+    },
+  );
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setErreur('');
-    try {
-      await adminService.ajouterUtilisateur(form);
-      onSuccess();
-    } catch (err) {
-      setErreur(err.response?.data?.message || 'Erreur de creation');
+  const modifier = (champ, valeur) => setForm((precedent) => ({ ...precedent, [champ]: valeur }));
+
+  const soumettre = (event) => {
+    event.preventDefault();
+    const erreurs = {};
+    if (!/^[A-Z0-9]{6}$/.test(form.idAgent.trim().toUpperCase())) {
+      erreurs.idAgent = '6 caractères alphanumériques en majuscules (ex. AG0005).';
     }
+    if (!form.nomAgent.trim()) erreurs.nomAgent = 'Le nom est obligatoire.';
+    if (!form.prenomAgent.trim()) erreurs.prenomAgent = 'Le prénom est obligatoire.';
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.emailAgent.trim())) {
+      erreurs.emailAgent = 'Adresse e-mail invalide.';
+    }
+    if (form.telephoneAgent && !/^(\+261\d{9}|03\d{8})$/.test(form.telephoneAgent.trim())) {
+      erreurs.telephoneAgent = 'Format attendu : +261XXXXXXXXX ou 03XXXXXXXX.';
+    }
+    if (!edition && form.motDePasse.length < 8) {
+      erreurs.motDePasse = 'Le mot de passe doit contenir au moins 8 caractères.';
+    }
+    if (edition && form.motDePasse && form.motDePasse.length < 8) {
+      erreurs.motDePasse = 'Le nouveau mot de passe doit contenir au moins 8 caractères.';
+    }
+    setErreursLocales(erreurs);
+    if (Object.keys(erreurs).length > 0) return;
+    executer();
   };
+
+  const erreurDe = (champ) => erreursLocales[champ] || champs[champ];
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-xl max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto">
-        <h2 className="text-xl font-bold mb-4">Nouvel utilisateur</h2>
+    <form onSubmit={soumettre} className="space-y-4" noValidate>
+      {erreur && (
+        <Alert variante="danger" titre="Enregistrement impossible">
+          {erreur.message}
+        </Alert>
+      )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm mb-1">ID Agent *</label>
-              <input name="idAgent" value={form.idAgent} onChange={handleChange}
-                maxLength={6} placeholder="AG0005" required
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500 outline-none" />
-            </div>
-            <div>
-              <label className="block text-sm mb-1">Telephone</label>
-              <input name="telephoneAgent" value={form.telephoneAgent} onChange={handleChange}
-                placeholder="+261340000005"
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500 outline-none" />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm mb-1">Nom *</label>
-              <input name="nomAgent" value={form.nomAgent} onChange={handleChange} required
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500 outline-none" />
-            </div>
-            <div>
-              <label className="block text-sm mb-1">Prenom *</label>
-              <input name="prenomAgent" value={form.prenomAgent} onChange={handleChange} required
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500 outline-none" />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm mb-1">Email *</label>
-            <input type="email" name="emailAgent" value={form.emailAgent} onChange={handleChange} required
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500 outline-none" />
-          </div>
-
-          <div>
-            <label className="block text-sm mb-1">Mot de passe (hash bcrypt) *</label>
-            <input name="motDePasseHashAgent" value={form.motDePasseHashAgent} onChange={handleChange} required
-              placeholder="$2a$10$..."
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg font-mono text-xs focus:ring-2 focus:ring-sky-500 outline-none" />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm mb-1">Division *</label>
-              <select name="division" value={form.division} onChange={handleChange}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500 outline-none">
-                {DIVISIONS.map((d) => <option key={d} value={d}>{d}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm mb-1">Role *</label>
-              <select name="roleSecurite" value={form.roleSecurite} onChange={handleChange}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500 outline-none">
-                {ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
-              </select>
-            </div>
-          </div>
-
-          {erreur && <div className="bg-red-50 text-red-700 p-3 rounded-lg text-sm">{erreur}</div>}
-
-          <div className="flex justify-end gap-3 pt-4">
-            <button type="button" onClick={onClose}
-              className="px-4 py-2 border border-slate-300 rounded-lg hover:bg-slate-50">
-              Annuler
-            </button>
-            <button type="submit"
-              className="px-4 py-2 bg-sky-500 hover:bg-sky-600 text-white rounded-lg">
-              Creer
-            </button>
-          </div>
-        </form>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Input
+          id="idAgent"
+          label="Identifiant agent"
+          obligatoire
+          value={form.idAgent}
+          onChange={(e) => modifier('idAgent', e.target.value.toUpperCase())}
+          disabled={edition}
+          maxLength={6}
+          placeholder="AG0005"
+          erreur={erreurDe('idAgent')}
+          aide={edition ? 'L’identifiant ne peut pas être modifié.' : undefined}
+        />
+        <Input
+          id="telephoneAgent"
+          label="Téléphone"
+          value={form.telephoneAgent}
+          onChange={(e) => modifier('telephoneAgent', e.target.value)}
+          placeholder="+261340000005"
+          erreur={erreurDe('telephoneAgent')}
+        />
+        <Input
+          id="nomAgent"
+          label="Nom"
+          obligatoire
+          value={form.nomAgent}
+          onChange={(e) => modifier('nomAgent', e.target.value)}
+          erreur={erreurDe('nomAgent')}
+        />
+        <Input
+          id="prenomAgent"
+          label="Prénom"
+          obligatoire
+          value={form.prenomAgent}
+          onChange={(e) => modifier('prenomAgent', e.target.value)}
+          erreur={erreurDe('prenomAgent')}
+        />
       </div>
-    </div>
+
+      <Input
+        id="emailAgent"
+        type="email"
+        label="Adresse e-mail"
+        obligatoire
+        value={form.emailAgent}
+        onChange={(e) => modifier('emailAgent', e.target.value)}
+        erreur={erreurDe('emailAgent')}
+      />
+
+      <Input
+        id="motDePasse"
+        type="password"
+        label={edition ? 'Nouveau mot de passe' : 'Mot de passe'}
+        obligatoire={!edition}
+        value={form.motDePasse}
+        onChange={(e) => modifier('motDePasse', e.target.value)}
+        autoComplete="new-password"
+        erreur={erreurDe('motDePasse')}
+        aide={edition ? 'Laisser vide pour conserver le mot de passe actuel.' : '8 caractères minimum.'}
+      />
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Select
+          id="division"
+          label="Division"
+          obligatoire
+          value={form.division}
+          onChange={(e) => modifier('division', e.target.value)}
+          erreur={erreurDe('division')}
+        >
+          {DIVISIONS.map((division) => (
+            <option key={division.code} value={division.code}>
+              {division.libelle}
+            </option>
+          ))}
+        </Select>
+        <Select
+          id="roleSecurite"
+          label="Rôle"
+          obligatoire
+          value={form.roleSecurite}
+          onChange={(e) => modifier('roleSecurite', e.target.value)}
+          erreur={erreurDe('roleSecurite')}
+        >
+          {ROLES.map((role) => (
+            <option key={role.code} value={role.code}>
+              {role.libelle}
+            </option>
+          ))}
+        </Select>
+      </div>
+
+      <div className="flex flex-col-reverse gap-2 border-t border-slate-200 pt-4 sm:flex-row sm:justify-end">
+        <Button type="button" variant="ghost" onClick={onFermer} disabled={enCours}>
+          Annuler
+        </Button>
+        <Button type="submit" chargement={enCours}>
+          {edition ? 'Enregistrer' : 'Créer l’utilisateur'}
+        </Button>
+      </div>
+    </form>
   );
 }

@@ -1,57 +1,52 @@
-import { createContext, useState, useEffect, useContext } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import authService from '../services/authService';
-
-const AuthContext = createContext(null);
+import { EVENEMENT_SESSION_EXPIREE } from '../services/api';
+import { AuthContext } from './useAuth';
 
 export function AuthProvider({ children }) {
-  const [utilisateur, setUtilisateur] = useState(null);
-  const [chargement, setChargement] = useState(true);
+  const [utilisateur, setUtilisateur] = useState(() => authService.getUtilisateur());
 
   useEffect(() => {
-    const user = authService.getUtilisateur();
-    if (user && authService.isAuthentifie()) {
-      setUtilisateur(user);
-    }
-    setChargement(false);
+    const surExpiration = () => {
+      authService.logout();
+      setUtilisateur(null);
+      sessionStorage.setItem('session-expiree', '1');
+    };
+    window.addEventListener(EVENEMENT_SESSION_EXPIREE, surExpiration);
+    return () => window.removeEventListener(EVENEMENT_SESSION_EXPIREE, surExpiration);
   }, []);
 
-  const login = async (identifiant, motDePasse) => {
-    const data = await authService.login(identifiant, motDePasse);
-    localStorage.setItem('token', data.token);
-    const user = {
-      identifiant: data.identifiant,
-      role: data.role,
-      type: data.type,
-    };
-    localStorage.setItem('utilisateur', JSON.stringify(user));
-    setUtilisateur(user);
-    return user;
-  };
+  const login = useCallback(async (identifiant, motDePasse) => {
+    const session = await authService.login(identifiant, motDePasse);
+    setUtilisateur(session);
+    return session;
+  }, []);
 
-  const logout = () => {
+  const logout = useCallback(() => {
     authService.logout();
     setUtilisateur(null);
-  };
+  }, []);
 
-  const estConnecte = () => !!utilisateur;
-
-  const aRole = (roles) => {
-    if (!utilisateur) return false;
-    const listeRoles = Array.isArray(roles) ? roles : [roles];
-    return listeRoles.includes(utilisateur.role);
-  };
-
-  return (
-    <AuthContext.Provider value={{ utilisateur, chargement, login, logout, estConnecte, aRole }}>
-      {children}
-    </AuthContext.Provider>
+  const aRole = useCallback(
+    (roles) => {
+      if (!utilisateur) return false;
+      const liste = Array.isArray(roles) ? roles : [roles];
+      return liste.includes(utilisateur.role);
+    },
+    [utilisateur],
   );
-}
 
-export function useAuth() {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth doit etre utilise dans un AuthProvider');
-  }
-  return context;
+  const valeur = useMemo(
+    () => ({
+      utilisateur,
+      chargement: false,
+      login,
+      logout,
+      estConnecte: !!utilisateur,
+      aRole,
+    }),
+    [utilisateur, login, logout, aRole],
+  );
+
+  return <AuthContext.Provider value={valeur}>{children}</AuthContext.Provider>;
 }
