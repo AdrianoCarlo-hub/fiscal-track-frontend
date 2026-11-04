@@ -15,7 +15,10 @@ import { exporterCsv } from '../../utils/exportUtils';
 
 export default function RecouvrementPage() {
   const { data, chargement, erreur, recharger } = useApiData(compteCourantService.nonSoldes, []);
-  const liste = useListView(data || []);
+  const liste = useListView(data || [], 10, {
+    cleUrl: 'recouvrement',
+    champs: ['nif', 'statutRecouvrement', 'montantTotalDu', 'montantPaye', 'resteARecouvrer'],
+  });
   const comptes = data || [];
 
   const totalDu = comptes.reduce((total, compte) => total + Number(compte.montantTotalDu || 0), 0);
@@ -32,7 +35,7 @@ export default function RecouvrementPage() {
         { libelle: 'Reste (Ar)', cle: 'resteARecouvrer' },
         { libelle: 'Statut', valeur: (ligne) => libelle('statutRecouvrement', ligne.statutRecouvrement) },
       ],
-      comptes,
+      liste.filtered,
     );
   };
 
@@ -94,7 +97,7 @@ export default function RecouvrementPage() {
           <button
             type="button"
             onClick={exporter}
-            disabled={comptes.length === 0}
+            disabled={liste.filteredCount === 0}
             className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Download className="h-4 w-4" aria-hidden="true" />
@@ -128,12 +131,13 @@ export default function RecouvrementPage() {
             onChange={liste.setQuery}
             placeholder="Rechercher par NIF ou statut…"
             count={liste.filteredCount}
+            onReinitialiser={liste.reinitialiser}
           />
 
           <DataTable
             colonnes={colonnes}
             donnees={liste.items}
-            pagination={liste.pagination}
+            pagination={{ ...liste.pagination, onTailleChange: liste.setTaille }}
             onPageChange={liste.setPage}
             rechercheActive={Boolean(liste.query)}
             onEffacerRecherche={liste.clear}

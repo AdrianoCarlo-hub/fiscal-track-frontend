@@ -37,9 +37,13 @@ export default function DettesPage() {
     [dettes],
   );
 
-  const { query, setQuery, clear, setPage, items, filteredCount, pagination } = useListView(
+  const { query, setQuery, clear, setPage, setTaille, reinitialiser, items, filteredCount, pagination } = useListView(
     dettes,
     10,
+    {
+      cleUrl: 'dettes',
+      champs: ['idCompte', 'idDeclaration', 'codeImpot', 'periodeFiscale', 'statutRecouvrement'],
+    },
   );
 
   const colonnes = [
@@ -148,6 +152,7 @@ export default function DettesPage() {
               onChange={setQuery}
               placeholder="Rechercher un compte ou un statut…"
               count={filteredCount}
+              onReinitialiser={reinitialiser}
             />
             <DataTable
               colonnes={colonnes}
@@ -155,7 +160,7 @@ export default function DettesPage() {
               chargement={chargement}
               erreur={erreur}
               onReessayer={recharger}
-              pagination={pagination}
+              pagination={{ ...pagination, onTailleChange: setTaille }}
               onPageChange={setPage}
               rechercheActive={!!query}
               onEffacerRecherche={clear}

@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import calculFiscalService from '../../services/calculFiscalService';
 import { messageErreur } from '../../services/api';
+import Button from '../ui/Button';
+import { Checkbox } from '../ui/FormControls';
+import { ChampMontant } from './ChampsCalcul';
 
 export default function CalculIrcmForm({ onResultat, onErreur }) {
   const [form, setForm] = useState({ caBrut: '', estCooperative: false, acomptes: '' });
@@ -33,30 +36,14 @@ export default function CalculIrcmForm({ onResultat, onErreur }) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <Field label="Chiffre d'affaires brut (Ar) *" name="caBrut" type="number" value={form.caBrut} onChange={handleChange} required />
-      <Field label="Acomptes deduits (Ar)" name="acomptes" type="number" value={form.acomptes} onChange={handleChange} />
+      <ChampMontant label="Chiffre d’affaires brut (Ar) *" name="caBrut" type="number" value={form.caBrut} onChange={handleChange} required />
+      <ChampMontant label="Acomptes déduits (Ar)" name="acomptes" type="number" value={form.acomptes} onChange={handleChange} />
 
-      <div className="flex items-center gap-2">
-        <input type="checkbox" id="estCooperative" name="estCooperative" checked={form.estCooperative} onChange={handleChange}
-          className="w-4 h-4" />
-        <label htmlFor="estCooperative" className="text-sm">Cooperative (taux reduit 10 %)</label>
-      </div>
+      <Checkbox id="estCooperative" name="estCooperative" label="Coopérative (taux réduit 10 %)" checked={form.estCooperative} onChange={handleChange} />
 
       <p className="text-xs text-slate-500">IRCM : 20 % (10 % pour les cooperatives) sur les revenus des capitaux mobiliers.</p>
-      <button type="submit" disabled={chargement}
-        className="w-full bg-sky-500 hover:bg-sky-600 text-white font-semibold py-3 rounded-lg disabled:opacity-50">
-        {chargement ? 'Calcul...' : "Calculer l'IRCM"}
-      </button>
+      <Button type="submit" chargement={chargement} size="lg" className="w-full">{chargement ? 'Calcul...' : "Calculer l’IRCM"}</Button>
     </form>
   );
 }
 
-function Field({ label, name, type, value, onChange, required }) {
-  return (
-    <div>
-      <label className="block text-sm font-medium mb-1">{label}</label>
-      <input type={type} name={name} value={value} onChange={onChange} required={required}
-        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500 outline-none" />
-    </div>
-  );
-}

@@ -62,7 +62,10 @@ export default function NotificationsAgentPage() {
     return notifications.filter((notification) => notification.statutEnvoi === filtre);
   }, [notifications, filtre]);
 
-  const vue = useListView(filtrees, 10);
+  const vue = useListView(filtrees, 10, {
+    cleUrl: 'agent-notifications',
+    champs: ['nif', 'objetEmail', 'canal', 'statutEnvoi', 'typeRelance', 'dateEnvoi'],
+  });
 
   const generer = useAsyncAction(
     async () => {
@@ -266,8 +269,7 @@ export default function NotificationsAgentPage() {
       {!peutGenerer && (
         <Alert variante="info" titre="Génération réservée" className="mb-5">
           Votre rôle permet de consulter et d’envoyer les notifications existantes, mais pas d’en
-          générer de nouvelles. La génération est réservée aux agents de gestion, aux responsables
-          et aux administrateurs.
+          générer de nouvelles. La génération est réservée aux agents de gestion et aux administrateurs.
         </Alert>
       )}
 
@@ -293,6 +295,7 @@ export default function NotificationsAgentPage() {
             onChange={vue.setQuery}
             placeholder="Rechercher par NIF, objet, canal ou statut…"
             count={vue.filteredCount}
+            onReinitialiser={vue.reinitialiser}
           />
           <DataTable
             colonnes={colonnes}
@@ -300,7 +303,7 @@ export default function NotificationsAgentPage() {
             chargement={chargement}
             erreur={erreur}
             onReessayer={recharger}
-            pagination={vue.pagination}
+            pagination={{ ...vue.pagination, onTailleChange: vue.setTaille }}
             onPageChange={vue.setPage}
             rechercheActive={!!vue.query}
             onEffacerRecherche={vue.clear}

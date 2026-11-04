@@ -40,7 +40,11 @@ export default function ObligationsPage() {
     [obligations, filtre],
   );
 
-  const { query, setQuery, clear, setPage, items, filteredCount, pagination } = useListView(filtrees, 10);
+  const { query, setQuery, clear, setPage, setTaille, reinitialiser, items, filteredCount, pagination } = useListView(
+    filtrees,
+    10,
+    { cleUrl: 'obligations', champs: ['codeImpot', 'periodeFiscale', 'statutDeclaration', 'dateLimiteReelle'] },
+  );
 
   const colonnes = [
     {
@@ -136,6 +140,7 @@ export default function ObligationsPage() {
             onChange={setQuery}
             placeholder="Rechercher un impôt, une période ou un statut…"
             count={filteredCount}
+            onReinitialiser={reinitialiser}
           />
           <DataTable
             colonnes={colonnes}
@@ -143,7 +148,7 @@ export default function ObligationsPage() {
             chargement={chargement}
             erreur={erreur}
             onReessayer={recharger}
-            pagination={pagination}
+            pagination={{ ...pagination, onTailleChange: setTaille }}
             onPageChange={setPage}
             rechercheActive={!!query}
             onEffacerRecherche={clear}

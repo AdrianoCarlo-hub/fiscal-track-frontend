@@ -23,11 +23,15 @@ import { formatMontant, formatPourcentage } from '../../utils/formatUtils';
 
 export default function DashboardPage() {
   const { data, chargement, erreur, recharger } = useApiData(async () => {
-    const [indicateurs, top10] = await Promise.all([
+    const [resultatIndicateurs, resultatTop10] = await Promise.allSettled([
       dashboardService.indicateurs(),
       dashboardService.top10Restes(),
     ]);
-    return { indicateurs, top10 };
+    if (resultatIndicateurs.status === 'rejected') throw resultatIndicateurs.reason;
+    return {
+      indicateurs: resultatIndicateurs.value,
+      top10: resultatTop10.status === 'fulfilled' && Array.isArray(resultatTop10.value) ? resultatTop10.value : [],
+    };
   }, []);
 
   const entete = (
@@ -193,7 +197,7 @@ export default function DashboardPage() {
             <p className="py-8 text-center text-sm text-slate-500">Aucun reste à recouvrer.</p>
           ) : (
             <ul className="divide-y divide-slate-100">
-              {top10.slice(0, 5).map((compte) => (
+              {top10.slice(0, 10).map((compte) => (
                 <li key={compte.idCompte} className="flex items-center justify-between gap-4 py-2.5">
                   <Link
                     to={`/agent/dossiers/${compte.nif}`}

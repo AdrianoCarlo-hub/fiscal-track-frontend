@@ -2,13 +2,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { CalendarClock, RefreshCw } from 'lucide-react';
 import acomptesService, { messageErreurAcomptes } from '../../services/acomptesService';
-import { libellePeriodeAcompte, libelleStatutAcompte } from '../../utils/fiscalConstants';
-import {
-  formatDate,
-  formatMontant,
-  formatTaux,
-  getStatutAcompteColor,
-} from '../../utils/formatUtils';
+import { libellePeriodeAcompte } from '../../utils/fiscalConstants';
+import { formatDate, formatMontant, formatTaux } from '../../utils/formatUtils';
+import StatutBadge from '../ui/StatutBadge';
 import { statutAcompte, totalAPayer } from '../../utils/acomptesUtils';
 
 export default function ListeAcomptesObligatoires({
@@ -52,7 +48,7 @@ export default function ListeAcomptesObligatoires({
     String(a.periodeFiscale || '').localeCompare(String(b.periodeFiscale || ''))), [acomptes]);
 
   return (
-    <section className="rounded-xl border border-slate-200 bg-white p-5" aria-labelledby={`acomptes-${nif}`}>
+    <section className="rounded-lg border border-slate-200 bg-white p-5" aria-labelledby={`acomptes-${nif}`}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 id={`acomptes-${nif}`} className="font-serif text-xl font-semibold text-primary">{titre}</h2>
@@ -126,9 +122,7 @@ export default function ListeAcomptesObligatoires({
                     </td>
                     <td className="px-4 py-3 text-right text-green-700">{formatMontant(ligne.montantPaye)}</td>
                     <td className="px-4 py-3">
-                      <span className={`inline-flex rounded-md px-2.5 py-1 text-xs font-semibold ${getStatutAcompteColor(statut)}`}>
-                        {libelleStatutAcompte(statut)}
-                      </span>
+                      <StatutBadge famille="statutAcompte" code={statut} />
                     </td>
                     {afficherLienDepot && (
                       <td className="px-4 py-3 text-right">

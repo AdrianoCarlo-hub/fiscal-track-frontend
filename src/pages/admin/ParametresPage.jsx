@@ -34,7 +34,10 @@ export default function ParametresPage() {
   const parametresAffiches = secteur
     ? parametres.filter((parametre) => parametre.secteur === secteur)
     : parametres;
-  const liste = useListView(parametresAffiches);
+  const liste = useListView(parametresAffiches, 10, {
+    cleUrl: 'parametres',
+    champs: ['code', 'description', 'secteur', 'baseLegale'],
+  });
 
   const actifs = parametres.filter(
     (parametre) => !parametre.anneeFin || Number(parametre.anneeFin) >= ANNEE_COURANTE,
@@ -119,6 +122,10 @@ export default function ParametresPage() {
             onChange={liste.setQuery}
             placeholder="Rechercher un code, une base légale ou un secteur…"
             count={liste.filteredCount}
+            onReinitialiser={() => {
+              liste.reinitialiser();
+              setSecteur('');
+            }}
             actions={
               <select
                 aria-label="Filtrer par secteur"
@@ -139,7 +146,7 @@ export default function ParametresPage() {
           <DataTable
             colonnes={colonnes}
             donnees={liste.items}
-            pagination={liste.pagination}
+            pagination={{ ...liste.pagination, onTailleChange: liste.setTaille }}
             onPageChange={liste.setPage}
             rechercheActive={Boolean(liste.query || secteur)}
             onEffacerRecherche={() => {

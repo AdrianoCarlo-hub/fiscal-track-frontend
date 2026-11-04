@@ -1,27 +1,19 @@
 import { useMemo, useState } from 'react';
 import { AlertCircle, Landmark } from 'lucide-react';
 import { useAuth } from '../../context/useAuth';
-import useApiData from '../../hooks/useApiData';
+import useApiData, { useListView } from '../../hooks/useApiData';
 import contribuableService from '../../services/contribuableService';
 import PageHeader from '../../components/ui/PageHeader';
 import SectionCard from '../../components/ui/SectionCard';
-import DataTable from '../../components/common/DataTable';
+import DataTable, { ListToolbar } from '../../components/common/DataTable';
 import StatutBadge from '../../components/ui/StatutBadge';
 import Alert from '../../components/ui/Alert';
 import KpiCard from '../../components/ui/KpiCard';
-import { formatDate, formatEcheanceRelative, formatMontant, joursAvantEcheance } from '../../utils/formatUtils';
+import { formatDate, formatEcheanceRelative, formatMontant } from '../../utils/formatUtils';
 import { libelleImpot } from '../../utils/fiscalConstants';
+import { statutAcompte } from '../../utils/acomptesUtils';
 
 const ANNEE_COURANTE = new Date().getFullYear();
-
-function statutAcompte(ligne) {
-  const du = Number(ligne.montantAcompte) || 0;
-  const paye = Number(ligne.montantPaye) || 0;
-  if (du > 0 && paye >= du) return 'PAYE';
-  const retard = (joursAvantEcheance(ligne.dateLimiteReelle) ?? 0) < 0;
-  if (retard) return 'EN_RETARD';
-  return paye > 0 ? 'PARTIEL' : 'A_PAYER';
-}
 
 export default function AcomptesPage() {
   const { utilisateur } = useAuth();
@@ -34,6 +26,15 @@ export default function AcomptesPage() {
   );
 
   const lignes = useMemo(() => (Array.isArray(data) ? data : []), [data]);
+  const liste = useListView(lignes, 10, {
+    cleUrl: 'acomptes',
+    champs: [
+      (ligne) => libelleImpot(ligne.codeImpot),
+      'periodeFiscale',
+      (ligne) => statutAcompte(ligne),
+      'dateLimiteReelle',
+    ],
+  });
 
   const totaux = useMemo(
     () =>
@@ -147,12 +148,23 @@ export default function AcomptesPage() {
         padding={false}
       >
         <div className="p-5">
+          <ListToolbar
+            value={liste.query}
+            onChange={liste.setQuery}
+            placeholder="Rechercher par impôt, période ou statut…"
+            count={liste.filteredCount}
+            onReinitialiser={liste.reinitialiser}
+          />
           <DataTable
             colonnes={colonnes}
-            donnees={lignes}
+            donnees={liste.items}
             chargement={chargement}
             erreur={erreur}
             onReessayer={recharger}
+            pagination={{ ...liste.pagination, onTailleChange: liste.setTaille }}
+            onPageChange={liste.setPage}
+            rechercheActive={!!liste.query}
+            onEffacerRecherche={liste.clear}
             titreVide="Aucun acompte pour cet exercice"
             descriptionVide="Aucun acompte provisionnel n’a été généré pour l’exercice sélectionné. Les acomptes sont créés automatiquement à partir de vos déclarations."
             cleLigne={(ligne) => ligne.idObligationFiscale}

@@ -37,9 +37,13 @@ export default function ModelesNotificationsPage() {
     [modeles, canal],
   );
 
-  const { query, setQuery, clear, setPage, items, filteredCount, pagination } = useListView(
+  const { query, setQuery, clear, setPage, setTaille, reinitialiser, items, filteredCount, pagination } = useListView(
     parCanal,
     10,
+    {
+      cleUrl: 'modeles-notifications',
+      champs: ['canal', 'typeRelance', 'objet', 'corps'],
+    },
   );
 
   const onglets = [
@@ -141,6 +145,7 @@ export default function ModelesNotificationsPage() {
             onChange={setQuery}
             count={filteredCount}
             placeholder="Rechercher un modèle par objet ou par type…"
+            onReinitialiser={reinitialiser}
           />
           <DataTable
             colonnes={colonnes}
@@ -148,7 +153,7 @@ export default function ModelesNotificationsPage() {
             chargement={chargement}
             erreur={erreur}
             onReessayer={recharger}
-            pagination={pagination}
+            pagination={{ ...pagination, onTailleChange: setTaille }}
             onPageChange={setPage}
             rechercheActive={!!query}
             onEffacerRecherche={clear}

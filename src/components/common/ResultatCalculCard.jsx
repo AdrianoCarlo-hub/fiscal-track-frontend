@@ -25,7 +25,7 @@ export default function ResultatCalculCard({ resultat }) {
 
   return (
     <div className="space-y-4">
-      <div className={`rounded-2xl border p-5 ${credit ? 'border-success/25 bg-success/5' : 'border-primary/20 bg-primary/5'}`}>
+      <div className={`rounded-lg border p-5 ${credit ? 'border-success/25 bg-success/5' : 'border-primary/20 bg-primary/5'}`}>
         <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
           Résultat du calcul {resultat.typeImpot}
         </p>

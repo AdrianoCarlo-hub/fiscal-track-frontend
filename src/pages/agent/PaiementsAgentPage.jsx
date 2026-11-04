@@ -27,7 +27,10 @@ export default function PaiementsAgentPage() {
   );
 
   const paiements = Array.isArray(data) ? data : [];
-  const vue = useListView(paiements, 10);
+  const vue = useListView(paiements, 10, {
+    cleUrl: 'agent-paiements',
+    champs: ['idPaiement', 'idCompte', 'modePaiement', 'referenceTransaction', 'montantVerse', 'datePaiement'],
+  });
   const total = paiements.reduce((somme, paiement) => somme + Number(paiement.montantVerse || 0), 0);
 
   const colonnes = [
@@ -126,6 +129,7 @@ export default function PaiementsAgentPage() {
             onChange={vue.setQuery}
             placeholder="Rechercher par compte, mode, référence ou montant…"
             count={vue.filteredCount}
+            onReinitialiser={vue.reinitialiser}
           />
           <DataTable
             colonnes={colonnes}
@@ -133,7 +137,7 @@ export default function PaiementsAgentPage() {
             chargement={chargement}
             erreur={erreur}
             onReessayer={recharger}
-            pagination={vue.pagination}
+            pagination={{ ...vue.pagination, onTailleChange: vue.setTaille }}
             onPageChange={vue.setPage}
             rechercheActive={!!vue.query}
             onEffacerRecherche={vue.clear}

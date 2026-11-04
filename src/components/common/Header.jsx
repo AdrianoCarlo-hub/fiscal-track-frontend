@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Bell, Menu } from 'lucide-react';
+import { Bell, Menu, Search } from 'lucide-react';
 import { useAuth } from '../../context/useAuth';
 import notificationService, { EVENEMENT_NOTIFICATIONS_LUES } from '../../services/notificationService';
 import { LIBELLES_ROLE } from '../../utils/libelles';
 import { titrePage } from '../../routes/roleRoutes';
+import CommandPalette from './CommandPalette';
 
 const dateDuJour = new Intl.DateTimeFormat('fr-FR', {
   weekday: 'long',
@@ -19,6 +20,11 @@ export default function Header({ onOuvrirMenu }) {
   const [nonLues, setNonLues] = useState(0);
   const [rafraichissement, setRafraichissement] = useState(0);
   const estContribuable = utilisateur?.role === 'CONTRIBUABLE';
+  const titre = titrePage(pathname);
+
+  useEffect(() => {
+    document.title = `${titre} · Fiscal-Track`;
+  }, [titre]);
 
   useEffect(() => {
     const surMiseAJour = () => setRafraichissement((valeur) => valeur + 1);
@@ -64,13 +70,26 @@ export default function Header({ onOuvrirMenu }) {
         </button>
 
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold text-slate-800">{titrePage(pathname)}</p>
+          <p className="truncate text-sm font-semibold text-slate-800">{titre}</p>
           <p className="hidden truncate text-xs text-slate-500 sm:block">
             Direction Générale des Impôts · Centre fiscal
           </p>
         </div>
 
-        <p className="hidden text-xs capitalize text-slate-500 lg:block">{dateDuJour.format(new Date())}</p>
+        <button
+          type="button"
+          onClick={() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true }))}
+          className="hidden min-h-10 items-center gap-2 rounded-lg border border-slate-300 px-3 text-sm text-slate-600 hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent sm:flex"
+          aria-label="Ouvrir la navigation rapide"
+        >
+          <Search className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" />
+          <span className="hidden lg:inline">Rechercher</span>
+          <kbd className="hidden rounded border border-slate-300 bg-white px-1.5 py-0.5 text-[10px] font-medium text-slate-500 lg:inline">
+            Ctrl K
+          </kbd>
+        </button>
+
+        <p className="hidden text-xs capitalize text-slate-500 xl:block">{dateDuJour.format(new Date())}</p>
 
         {estContribuable && (
           <Link
@@ -99,6 +118,7 @@ export default function Header({ onOuvrirMenu }) {
           </div>
         </div>
       </div>
+      <CommandPalette />
     </header>
   );
 }

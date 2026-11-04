@@ -47,7 +47,7 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-dvh items-center justify-center bg-[#F3F5F8] p-4 sm:p-8">
-      <div className="grid w-full max-w-5xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_18px_55px_rgba(30,39,97,0.12)] md:grid-cols-[1.05fr_0.95fr]">
+      <div className="grid w-full max-w-5xl overflow-hidden rounded-lg border border-slate-200 bg-white shadow-[0_18px_55px_rgba(30,39,97,0.12)] md:grid-cols-[1.05fr_0.95fr]">
         <section className="flex flex-col justify-between bg-primary p-8 text-white md:p-10">
           <div>
             <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-white/90">
@@ -79,7 +79,7 @@ export default function LoginPage() {
 
         <section className="bg-white p-8 md:p-10">
           <div className="mb-7 text-center">
-            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-lg bg-primary/10 text-primary">
               <UserRound className="h-7 w-7" aria-hidden="true" />
             </div>
             <h2 className="text-2xl font-bold text-slate-800">Connexion</h2>

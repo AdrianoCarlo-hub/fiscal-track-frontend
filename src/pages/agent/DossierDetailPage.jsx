@@ -24,16 +24,21 @@ import { libelle } from '../../utils/libelles';
 import { libelleImpot } from '../../utils/fiscalConstants';
 
 async function chargerDossier(nif) {
-  const [contribuable, obligations, comptes] = await Promise.all([
+  const [resultatContribuable, resultatObligations, resultatComptes] = await Promise.allSettled([
     contribuableService.parNif(nif),
     obligationService.parContribuable(nif),
     compteCourantService.parContribuable(nif),
   ]);
-  return {
-    contribuable,
-    obligations: Array.isArray(obligations) ? obligations : [],
-    comptes: Array.isArray(comptes) ? comptes : [],
-  };
+  if (resultatContribuable.status === 'rejected') throw resultatContribuable.reason;
+  const obligations =
+    resultatObligations.status === 'fulfilled' && Array.isArray(resultatObligations.value)
+      ? resultatObligations.value
+      : [];
+  const comptes =
+    resultatComptes.status === 'fulfilled' && Array.isArray(resultatComptes.value)
+      ? resultatComptes.value
+      : [];
+  return { contribuable: resultatContribuable.value, obligations, comptes };
 }
 
 export default function DossierDetailPage() {
@@ -50,8 +55,19 @@ export default function DossierDetailPage() {
 
   const obligations = data?.obligations || [];
   const comptes = data?.comptes || [];
-  const vueObligations = useListView(obligations, 10);
-  const vueComptes = useListView(comptes, 10);
+  const vueObligations = useListView(obligations, 10, {
+    cleUrl: 'dossier-obligations',
+    champs: [
+      (obligation) => libelleImpot(obligation.codeImpot),
+      'periodeFiscale',
+      'statutDeclaration',
+      'dateLimiteReelle',
+    ],
+  });
+  const vueComptes = useListView(comptes, 10, {
+    cleUrl: 'dossier-comptes',
+    champs: ['idCompte', 'idDeclaration', 'statutRecouvrement', 'resteARecouvrer'],
+  });
 
   if (chargement) {
     return (
@@ -168,7 +184,7 @@ export default function DossierDetailPage() {
         titre={contribuable.raisonSociale}
         description={`NIF ${contribuable.nif}`}
         fil={[
-          { libelle: 'Dossiers contribuables', lien: '/agent/dossiers' },
+          { libelle: 'Dossiers contribuables', to: '/agent/dossiers' },
           { libelle: contribuable.nif },
         ]}
         actions={
@@ -233,11 +249,12 @@ export default function DossierDetailPage() {
                 onChange={vueObligations.setQuery}
                 placeholder="Rechercher par impôt, période ou statut…"
                 count={vueObligations.filteredCount}
+                onReinitialiser={vueObligations.reinitialiser}
               />
               <DataTable
                 colonnes={colonnesObligations}
                 donnees={vueObligations.items}
-                pagination={vueObligations.pagination}
+                pagination={{ ...vueObligations.pagination, onTailleChange: vueObligations.setTaille }}
                 onPageChange={vueObligations.setPage}
                 rechercheActive={!!vueObligations.query}
                 onEffacerRecherche={vueObligations.clear}
@@ -255,11 +272,12 @@ export default function DossierDetailPage() {
                 onChange={vueComptes.setQuery}
                 placeholder="Rechercher par compte ou statut…"
                 count={vueComptes.filteredCount}
+                onReinitialiser={vueComptes.reinitialiser}
               />
               <DataTable
                 colonnes={colonnesComptes}
                 donnees={vueComptes.items}
-                pagination={vueComptes.pagination}
+                pagination={{ ...vueComptes.pagination, onTailleChange: vueComptes.setTaille }}
                 onPageChange={vueComptes.setPage}
                 rechercheActive={!!vueComptes.query}
                 onEffacerRecherche={vueComptes.clear}

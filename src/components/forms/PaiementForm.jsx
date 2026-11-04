@@ -5,6 +5,8 @@ import Modal from '../ui/Modal';
 import Button from '../ui/Button';
 import Alert from '../ui/Alert';
 import { Input, Select } from '../ui/FormControls';
+import Combobox from '../ui/Combobox';
+import MontantInput from '../ui/MontantInput';
 import useApiData from '../../hooks/useApiData';
 import useAsyncAction from '../../hooks/useAsyncAction';
 import { formatMontant } from '../../utils/formatUtils';
@@ -27,6 +29,15 @@ export default function PaiementForm({ onClose, onSuccess }) {
   );
 
   const comptesNonSoldes = useMemo(() => (Array.isArray(comptes) ? comptes : []), [comptes]);
+  const optionsComptes = useMemo(
+    () =>
+      comptesNonSoldes.map((compte) => ({
+        code: String(compte.idCompte),
+        libelle: `Compte n°${compte.idCompte} — NIF ${compte.nif} — reste ${formatMontant(compte.resteARecouvrer)}`,
+        nif: compte.nif,
+      })),
+    [comptesNonSoldes],
+  );
   const compteSelectionne = comptesNonSoldes.find(
     (compte) => String(compte.idCompte) === String(form.idCompte),
   );
@@ -101,13 +112,14 @@ export default function PaiementForm({ onClose, onSuccess }) {
         )}
 
         {!erreurComptes && comptesNonSoldes.length > 0 ? (
-          <Select
+          <Combobox
             id="idCompte"
-            name="idCompte"
             label="Compte courant fiscal"
+            valeur={form.idCompte}
+            onChange={(valeur) => setForm((actuel) => ({ ...actuel, idCompte: valeur }))}
+            options={optionsComptes}
+            placeholder="Rechercher un compte (n°, NIF…)"
             obligatoire
-            value={form.idCompte}
-            onChange={modifier}
             erreur={enregistrement.champs.idCompte}
             aide={
               compteSelectionne
@@ -115,15 +127,9 @@ export default function PaiementForm({ onClose, onSuccess }) {
                 : 'Seuls les comptes non soldés sont proposés.'
             }
             disabled={chargementComptes}
-          >
-            <option value="">Sélectionner un compte…</option>
-            {comptesNonSoldes.map((compte) => (
-              <option key={compte.idCompte} value={compte.idCompte}>
-                Compte n°{compte.idCompte} — NIF {compte.nif} — reste{' '}
-                {formatMontant(compte.resteARecouvrer)}
-              </option>
-            ))}
-          </Select>
+            getRecherche={(option) => option.libelle}
+            permettreEffacement={false}
+          />
         ) : (
           <Input
             id="idCompte"
@@ -140,21 +146,24 @@ export default function PaiementForm({ onClose, onSuccess }) {
           />
         )}
 
-        <Input
+        <MontantInput
           id="montantVerse"
-          name="montantVerse"
-          type="number"
-          min="0.01"
-          step="0.01"
+          nom="montantVerse"
           label="Montant versé (Ar)"
           obligatoire
-          value={form.montantVerse}
-          onChange={modifier}
-          placeholder="Ex. 500000"
+          valeur={form.montantVerse === '' ? null : Number(form.montantVerse)}
+          onChange={(valeur) =>
+            setForm((actuel) => ({ ...actuel, montantVerse: valeur === null ? '' : String(valeur) }))
+          }
           erreur={
             montantTropEleve
               ? `Le montant dépasse le reste à recouvrer (${formatMontant(reste)}).`
               : enregistrement.champs.montantVerse
+          }
+          aide={
+            compteSelectionne
+              ? `Reste à recouvrer : ${formatMontant(reste)}.`
+              : undefined
           }
         />
 

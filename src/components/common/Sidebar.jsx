@@ -1,131 +1,15 @@
 import { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import {
-  AlertCircle,
-  ArrowLeftRight,
-  Bell,
-  CalendarDays,
-  CheckCircle2,
-  ChevronLeft,
-  ChevronRight,
-  ClipboardList,
-  CreditCard,
-  FileBarChart,
-  FileText,
-  Folder,
-  Landmark,
-  LayoutDashboard,
-  LogOut,
-  Mail,
-  ScrollText,
-  Settings,
-  User,
-  UserCog,
-  Users,
-  Wallet,
-  X,
-} from 'lucide-react';
+import { CheckCircle2, ChevronLeft, ChevronRight, LogOut, X } from 'lucide-react';
 import { useAuth } from '../../context/useAuth';
 import { LIBELLES_ROLE } from '../../utils/libelles';
-
-const MENUS = {
-  CONTRIBUABLE: [
-    {
-      titre: 'Mon espace fiscal',
-      elements: [
-        ['/contribuable/calendrier', 'Calendrier fiscal', CalendarDays],
-        ['/contribuable/obligations', 'Mes obligations', ClipboardList],
-        ['/contribuable/declarations', 'Mes déclarations', FileText],
-        ['/contribuable/paiements', 'Mes paiements', CreditCard],
-        ['/contribuable/dettes', 'Mes dettes', AlertCircle],
-        ['/contribuable/acomptes', 'Mes acomptes', Landmark],
-      ],
-    },
-    {
-      titre: 'Mon compte',
-      elements: [
-        ['/contribuable/notifications', 'Mes notifications', Bell],
-        ['/contribuable/profil', 'Mon profil', User],
-      ],
-    },
-  ],
-  AGENT_GESTION: [
-    {
-      titre: 'Gestion des dossiers',
-      elements: [
-        ['/agent/dossiers', 'Dossiers contribuables', Folder],
-        ['/agent/declarations', 'Instruction des déclarations', FileText],
-      ],
-    },
-    {
-      titre: 'Communication',
-      elements: [
-        ['/agent/notifications', 'Notifications et rappels', Bell],
-        ['/agent/simulateur', 'Simulateur fiscal', Wallet],
-      ],
-    },
-  ],
-  AGENT_RECETTE: [
-    {
-      titre: 'Recette',
-      elements: [
-        ['/agent/dossiers', 'Dossiers contribuables', Folder],
-        ['/agent/paiements', 'Paiements enregistrés', CreditCard],
-        ['/agent/dettes', 'Suivi des dettes', AlertCircle],
-      ],
-    },
-    {
-      titre: 'Communication',
-      elements: [['/agent/notifications', 'Notifications et rappels', Bell]],
-    },
-  ],
-  RESPONSABLE: [
-    {
-      titre: 'Pilotage fiscal',
-      elements: [
-        ['/responsable/dashboard', 'Tableau de bord', LayoutDashboard],
-        ['/responsable/retards', 'Obligations en retard', AlertCircle],
-        ['/responsable/recouvrement', 'Recouvrement', ArrowLeftRight],
-        ['/responsable/rapports', 'Rapports et exports', FileBarChart],
-      ],
-    },
-    {
-      titre: 'Outils',
-      elements: [
-        ['/agent/notifications', 'Notifications et rappels', Bell],
-        ['/agent/simulateur', 'Simulateur fiscal', Wallet],
-      ],
-    },
-  ],
-  ADMIN: [
-    {
-      titre: 'Vue générale',
-      elements: [['/responsable/dashboard', 'Tableau de bord', LayoutDashboard]],
-    },
-    {
-      titre: 'Administration',
-      elements: [
-        ['/admin/utilisateurs', 'Utilisateurs', Users],
-        ['/admin/roles', 'Rôles et permissions', UserCog],
-        ['/admin/types-impots', 'Types d’impôts', Wallet],
-        ['/admin/jours-feries', 'Jours fériés', CalendarDays],
-        ['/admin/parametres', 'Paramètres fiscaux', Settings],
-        ['/admin/modeles-notifications', 'Modèles de notifications', Mail],
-        ['/admin/journal-audit', 'Journal d’audit', ScrollText],
-      ],
-    },
-    {
-      titre: 'Outils',
-      elements: [['/agent/simulateur', 'Simulateur fiscal', Wallet]],
-    },
-  ],
-};
+import { menuPourRole } from '../../routes/configRoutes';
 
 export default function Sidebar({ mobileOpen = false, onClose }) {
   const { utilisateur, logout } = useAuth();
   const [reduit, setReduit] = useState(false);
   const navigate = useNavigate();
-  const menus = MENUS[utilisateur?.role] || [];
+  const menus = menuPourRole(utilisateur?.role);
   const initiales = (utilisateur?.identifiant || 'FT').slice(0, 2).toUpperCase();
 
   const deconnexion = () => {
@@ -189,28 +73,31 @@ export default function Sidebar({ mobileOpen = false, onClose }) {
                 </h2>
               )}
               <ul className="space-y-1">
-                {menu.elements.map(([chemin, libelle, Icone]) => (
-                  <li key={chemin}>
-                    <NavLink
-                      to={chemin}
-                      onClick={onClose}
-                      title={reduit ? libelle : undefined}
-                      aria-label={reduit ? libelle : undefined}
-                      className={({ isActive }) =>
-                        [
-                          'group flex min-h-10 items-center gap-3 rounded-lg px-3 text-sm transition-colors',
-                          reduit ? 'justify-center px-2' : '',
-                          isActive
-                            ? 'border-l-[3px] border-accent bg-white/15 font-semibold text-white'
-                            : 'text-white/75 hover:bg-white/10 hover:text-white',
-                        ].join(' ')
-                      }
-                    >
-                      <Icone className="h-[18px] w-[18px] shrink-0" aria-hidden="true" />
-                      {!reduit && <span className="truncate">{libelle}</span>}
-                    </NavLink>
-                  </li>
-                ))}
+                {menu.elements.map((route) => {
+                  const Icone = route.icone;
+                  return (
+                    <li key={route.id}>
+                      <NavLink
+                        to={route.chemin}
+                        onClick={onClose}
+                        title={reduit ? route.libelleMenu || route.titre : undefined}
+                        aria-label={reduit ? route.libelleMenu || route.titre : undefined}
+                        className={({ isActive }) =>
+                          [
+                            'group flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm transition-colors duration-150',
+                            reduit ? 'justify-center px-2' : '',
+                            isActive
+                              ? 'border-l-[3px] border-accent bg-white/15 font-semibold text-white'
+                              : 'text-white/75 hover:bg-white/10 hover:text-white',
+                          ].join(' ')
+                        }
+                      >
+                        {Icone && <Icone className="h-[18px] w-[18px] shrink-0" strokeWidth={1.75} aria-hidden="true" />}
+                        {!reduit && <span className="truncate">{route.libelleMenu || route.titre}</span>}
+                      </NavLink>
+                    </li>
+                  );
+                })}
               </ul>
             </section>
           ))}

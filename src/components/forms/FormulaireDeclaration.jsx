@@ -1,6 +1,10 @@
 import { useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
-import { CATEGORIES_ACTIVITE, CATEGORIES_ACTIVITE_IS, SEUIL_MINIMUM_CA_IR, libelleCategorie } from '../../utils/fiscalConstants';
+import { CATEGORIES_ACTIVITE, CATEGORIES_ACTIVITE_IS, SEUIL_MINIMUM_CA_IR } from '../../utils/fiscalConstants';
+import MontantInput from '../ui/MontantInput';
+import Combobox from '../ui/Combobox';
+import { Checkbox, Input } from '../ui/FormControls';
+import { libelleCategorie } from '../../utils/referentiels';
 
 /**
  * Formulaire de declaration adapte au type d'impot de l'obligation.
@@ -186,7 +190,7 @@ function FormIr({ valeurs, onChange, maj, erreurs }) {
         {valeurs.deficits.map((d, i) => (
           <div key={`def-${i}`} className="flex flex-wrap items-end gap-3 rounded-lg border border-slate-200 p-3">
             <div className="w-32">
-              <Champ label="Exercice d’origine" name={`deficit-annee-${i}`} type="number"
+              <Champ label="Exercice d’origine" name={`deficit-annee-${i}`} type="number" montant={false}
                 value={d.anneeOrigine} onChange={(v) => majDeficit(i, 'anneeOrigine', v)} />
             </div>
             <div className="flex-1 min-w-40">
@@ -241,7 +245,7 @@ function FormIrsa({ valeurs, onChange, erreurs }) {
       </div>
 
       {valeurs.salaries.map((ligne, i) => (
-        <div key={`sal-${i}`} className="rounded-xl border border-slate-200 p-4 space-y-3">
+        <div key={`sal-${i}`} className="rounded-lg border border-slate-200 p-4 space-y-3">
           <div className="flex items-center justify-between">
             <p className="text-sm font-semibold text-slate-700">Salarié n°{i + 1}</p>
             {valeurs.salaries.length > 1 && (
@@ -261,7 +265,7 @@ function FormIrsa({ valeurs, onChange, erreurs }) {
             <Champ label="Cotisations sociales (Ar)" name={`cotis-${i}`}
               value={ligne.cotisationsSociales} onChange={(v) => majLigne(i, 'cotisationsSociales', v)}
               aide="Part salariale retenue sur le bulletin de paie." />
-            <Champ label="Personnes à charge" name={`charge-${i}`} type="number" min="0"
+            <Champ label="Personnes à charge" name={`charge-${i}`} type="number" montant={false} min="0"
               value={ligne.personnesCharge} onChange={(v) => majLigne(i, 'personnesCharge', v)} />
           </div>
 
@@ -288,7 +292,7 @@ function FormIrsa({ valeurs, onChange, erreurs }) {
 function FormAcompte({ codeImpot }) {
   const impot = codeImpot === 'ACOMPTE_IS' ? 'l’IS' : 'l’IR';
   return (
-    <div className="rounded-lg border border-sky-200 bg-sky-50 p-4 text-sm text-sky-800">
+    <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 text-sm text-slate-800">
       <p className="font-semibold">Aucune donnée à saisir.</p>
       <p className="mt-1">
         L’acompte provisionnel est calculé par le serveur à partir de {impot} de l’exercice précédent
@@ -350,58 +354,74 @@ function Section({ titre, children }) {
   );
 }
 
-function Champ({ label, name, value, onChange, onBlur, required, aide, type = 'number', min = '0', step, erreur }) {
-  const estNombre = type === 'number';
-  return (
-    <div>
-      <label htmlFor={name} className="block text-sm font-medium text-slate-700 mb-1">
-        {label}{required && <span className="text-danger"> *</span>}
-      </label>
-      <input
+function Champ({
+  label,
+  name,
+  value,
+  onChange,
+  onBlur,
+  required,
+  aide,
+  type = 'number',
+  min = '0',
+  max,
+  step,
+  erreur,
+  montant = true,
+}) {
+  if (type === 'number' && montant) {
+    return (
+      <MontantInput
         id={name}
-        type={type}
-        min={estNombre ? min : undefined}
-        step={estNombre ? (step || '0.01') : undefined}
-        value={value ?? ''}
-        onChange={(e) => onChange(e.target.value)}
+        nom={name}
+        label={label}
+        obligatoire={required}
+        valeur={value === '' || value === null || value === undefined ? null : Number(value)}
+        onChange={(valeur) => onChange(valeur === null ? '' : String(valeur))}
         onBlur={onBlur}
-        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none text-sm"
+        erreur={erreur}
+        aide={aide}
       />
-      {aide && <p className="mt-1 text-xs text-slate-500">{aide}</p>}
-      {erreur && <p className="mt-1 text-xs font-medium text-red-600">{erreur}</p>}
-    </div>
+    );
+  }
+
+  return (
+    <Input
+      id={name}
+      name={name}
+      type={type}
+      min={min}
+      max={max}
+      step={step}
+      label={label}
+      value={value ?? ''}
+      obligatoire={required}
+      onChange={(evenement) => onChange(evenement.target.value)}
+      onBlur={onBlur}
+      aide={aide}
+      erreur={erreur}
+    />
   );
 }
 
 function Case({ label, checked, onChange, aide }) {
-  return (
-    <div>
-      <label className="flex items-start gap-2 text-sm text-slate-700">
-        <input type="checkbox" checked={!!checked} onChange={(e) => onChange(e.target.checked)}
-          className="mt-0.5 h-4 w-4" />
-        <span>{label}</span>
-      </label>
-      {aide && <p className="ml-6 mt-1 text-xs text-slate-500">{aide}</p>}
-    </div>
-  );
+  const id = `case-${label.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+  return <Checkbox id={id} label={label} description={aide} checked={!!checked} onChange={(evenement) => onChange(evenement.target.checked)} />;
 }
 
 function SelecteurCategorie({ value, onChange, categories = CATEGORIES_ACTIVITE }) {
+  const optionsCategories = categories.map((code) => ({ code, libelle: libelleCategorie(code) }));
   return (
-    <div>
-      <label htmlFor="categorie-activite" className="block text-sm font-medium text-slate-700 mb-1">
-        Catégorie d’activité
-      </label>
-      <select id="categorie-activite" value={value || ''} onChange={(e) => onChange(e.target.value)}
-        className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-primary/30 outline-none text-sm">
-        <option value="">— Renseignée dans votre dossier —</option>
-        {categories.map((c) => (
-          <option key={c} value={c}>{libelleCategorie(c)}</option>
-        ))}
-      </select>
-      <p className="mt-1 text-xs text-slate-500">
-        La catégorie de votre dossier est utilisée si vous ne choisissez rien.
-      </p>
-    </div>
+    <Combobox
+      id="categorie-activite"
+      label="Catégorie d’activité"
+      valeur={value || ''}
+      onChange={onChange}
+      options={optionsCategories}
+      optionVide={{ code: '', libelle: '— Renseignée dans le dossier —' }}
+      placeholder="Rechercher une catégorie…"
+      aide="La catégorie de votre dossier est utilisée si vous ne choisissez rien."
+      permettreEffacement={false}
+    />
   );
 }

@@ -21,7 +21,10 @@ const ROLES = options('role').filter((role) => role.code !== 'CONTRIBUABLE');
 
 export default function UtilisateursPage() {
   const { data, chargement, erreur, recharger } = useApiData(adminService.listerUtilisateurs, []);
-  const liste = useListView(data || []);
+  const liste = useListView(data || [], 10, {
+    cleUrl: 'utilisateurs',
+    champs: ['idAgent', 'nomAgent', 'prenomAgent', 'emailAgent', 'telephoneAgent', 'division', 'roleSecurite'],
+  });
   const { notifier } = useToast();
   const confirmer = useConfirm();
   const [modal, setModal] = useState(null);
@@ -148,12 +151,13 @@ export default function UtilisateursPage() {
             onChange={liste.setQuery}
             placeholder="Rechercher par nom, identifiant, e-mail, division ou rôle…"
             count={liste.filteredCount}
+            onReinitialiser={liste.reinitialiser}
           />
 
           <DataTable
             colonnes={colonnes}
             donnees={liste.items}
-            pagination={liste.pagination}
+            pagination={{ ...liste.pagination, onTailleChange: liste.setTaille }}
             onPageChange={liste.setPage}
             rechercheActive={Boolean(liste.query)}
             onEffacerRecherche={liste.clear}

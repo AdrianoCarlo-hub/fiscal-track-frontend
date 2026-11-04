@@ -12,6 +12,7 @@ import Button from '../../components/ui/Button';
 import LoadingState from '../../components/ui/LoadingState';
 import ErrorState from '../../components/ui/ErrorState';
 import KpiCard from '../../components/ui/KpiCard';
+import Combobox from '../../components/ui/Combobox';
 import { formatDate, formatEcheanceRelative, joursAvantEcheance } from '../../utils/formatUtils';
 import { libelleImpot } from '../../utils/fiscalConstants';
 
@@ -215,31 +216,30 @@ export default function CalendrierPage() {
 
           <SectionCard titre="Filtrer les échéances" className="mb-6">
             <div className="grid gap-4 sm:grid-cols-3">
-              <label className="text-xs font-medium text-slate-600">
-                Type d’impôt
-                <select value={typeImpot} onChange={(evenement) => setTypeImpot(evenement.target.value)} className={SELECT_CLASSE}>
-                  <option value="TOUS">Tous les impôts</option>
-                  {types.map((type) => (
-                    <option key={type} value={type}>
-                      {libelleImpot(type)}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="text-xs font-medium text-slate-600">
-                Mois
-                <select value={moisFiltre} onChange={(evenement) => setMoisFiltre(evenement.target.value)} className={SELECT_CLASSE}>
-                  <option value="TOUS">Toute l’année</option>
-                  {MOIS.map((mois) => (
-                    <option key={mois.valeur} value={mois.valeur}>
-                      {mois.libelle}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="text-xs font-medium text-slate-600">
+              <Combobox
+                id="filtre-type-impot"
+                label="Type d’impôt"
+                valeur={typeImpot}
+                onChange={setTypeImpot}
+                options={[
+                  { code: 'TOUS', libelle: 'Tous les impôts' },
+                  ...types.map((type) => ({ code: type, libelle: libelleImpot(type) })),
+                ]}
+                placeholder="Rechercher un impôt…"
+                permettreEffacement={false}
+              />
+              <Combobox
+                id="filtre-mois"
+                label="Mois"
+                valeur={moisFiltre}
+                onChange={setMoisFiltre}
+                options={[{ code: 'TOUS', libelle: 'Toute l’année' }, ...MOIS.map((mois) => ({ code: mois.valeur, libelle: mois.libelle }))]}
+                placeholder="Rechercher un mois…"
+                permettreEffacement={false}
+              />
+              <label className="block text-sm font-medium text-slate-700">
                 Statut
-                <select value={statutFiltre} onChange={(evenement) => setStatutFiltre(evenement.target.value)} className={SELECT_CLASSE}>
+                <select value={statutFiltre} onChange={(evenement) => setStatutFiltre(evenement.target.value)} className={SELECT_CLASSE.replace('mt-1.5 ', '')}>
                   <option value="TOUS">Tous les statuts</option>
                   <option value="A_VENIR">À venir</option>
                   <option value="PROCHE">Échéance proche</option>
@@ -248,6 +248,21 @@ export default function CalendrierPage() {
                 </select>
               </label>
             </div>
+            {(typeImpot !== 'TOUS' || moisFiltre !== 'TOUS' || statutFiltre !== 'TOUS') && (
+              <div className="mt-3">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setTypeImpot('TOUS');
+                    setMoisFiltre('TOUS');
+                    setStatutFiltre('TOUS');
+                  }}
+                >
+                  Réinitialiser les filtres
+                </Button>
+              </div>
+            )}
           </SectionCard>
 
           <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
@@ -255,7 +270,7 @@ export default function CalendrierPage() {
               <h2 className="font-serif text-xl font-semibold text-primary">Échéances par mois</h2>
               <p className="text-sm text-slate-500">Sélectionnez une obligation pour afficher son détail.</p>
             </div>
-            <span className="text-sm text-slate-500">{nombreAffiche} obligation(s) affichée(s)</span>
+            <span className="text-sm text-slate-500" aria-live="polite">{nombreAffiche} obligation(s) affichée(s)</span>
           </div>
 
           {Object.keys(groupes).length === 0 ? (

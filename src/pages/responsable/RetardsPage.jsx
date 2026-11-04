@@ -16,7 +16,10 @@ import { exporterCsv } from '../../utils/exportUtils';
 
 export default function RetardsPage() {
   const { data, chargement, erreur, recharger } = useApiData(obligationService.retards, []);
-  const liste = useListView(data || []);
+  const liste = useListView(data || [], 10, {
+    cleUrl: 'retards',
+    champs: ['nif', (obligation) => libelleImpot(obligation.codeImpot), 'periodeFiscale', 'dateLimiteReelle'],
+  });
 
   const obligations = data || [];
   const impotsConcernes = new Set(obligations.map((obligation) => obligation.codeImpot)).size;
@@ -35,7 +38,7 @@ export default function RetardsPage() {
         { libelle: 'Échéance', valeur: (ligne) => formatDate(ligne.dateLimiteReelle) },
         { libelle: 'Statut', cle: 'statut' },
       ],
-      obligations.map((obligation) => ({ ...obligation, statut: 'En retard' })),
+      liste.filtered.map((obligation) => ({ ...obligation, statut: 'En retard' })),
     );
   };
 
@@ -85,7 +88,7 @@ export default function RetardsPage() {
           <button
             type="button"
             onClick={exporter}
-            disabled={obligations.length === 0}
+            disabled={liste.filteredCount === 0}
             className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Download className="h-4 w-4" aria-hidden="true" />
@@ -125,12 +128,13 @@ export default function RetardsPage() {
             onChange={liste.setQuery}
             placeholder="Rechercher par NIF, impôt ou période…"
             count={liste.filteredCount}
+            onReinitialiser={liste.reinitialiser}
           />
 
           <DataTable
             colonnes={colonnes}
             donnees={liste.items}
-            pagination={liste.pagination}
+            pagination={{ ...liste.pagination, onTailleChange: liste.setTaille }}
             onPageChange={liste.setPage}
             rechercheActive={Boolean(liste.query)}
             onEffacerRecherche={liste.clear}

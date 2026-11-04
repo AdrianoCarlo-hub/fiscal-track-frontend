@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import calculFiscalService from '../../services/calculFiscalService';
 import { messageErreur } from '../../services/api';
+import Button from '../ui/Button';
+import { ChampMontant } from './ChampsCalcul';
 
 export default function CalculImpForm({ onResultat, onErreur }) {
   const [form, setForm] = useState({ montantMarche: '', acomptes: '' });
@@ -30,23 +32,11 @@ export default function CalculImpForm({ onResultat, onErreur }) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <Field label="Montant du marche (Ar) *" name="montantMarche" type="number" value={form.montantMarche} onChange={handleChange} required />
-      <Field label="Acomptes deduits (Ar)" name="acomptes" type="number" value={form.acomptes} onChange={handleChange} />
+      <ChampMontant label="Montant du marché (Ar) *" name="montantMarche" type="number" value={form.montantMarche} onChange={handleChange} required />
+      <ChampMontant label="Acomptes déduits (Ar)" name="acomptes" type="number" value={form.acomptes} onChange={handleChange} />
       <p className="text-xs text-slate-500">IMP : 8 % sur les marches publics (CDI 05.xx).</p>
-      <button type="submit" disabled={chargement}
-        className="w-full bg-sky-500 hover:bg-sky-600 text-white font-semibold py-3 rounded-lg disabled:opacity-50">
-        {chargement ? 'Calcul...' : "Calculer l'IMP"}
-      </button>
+      <Button type="submit" chargement={chargement} size="lg" className="w-full">{chargement ? 'Calcul...' : "Calculer l’IMP"}</Button>
     </form>
   );
 }
 
-function Field({ label, name, type, value, onChange, required }) {
-  return (
-    <div>
-      <label className="block text-sm font-medium mb-1">{label}</label>
-      <input type={type} name={name} value={value} onChange={onChange} required={required}
-        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500 outline-none" />
-    </div>
-  );
-}

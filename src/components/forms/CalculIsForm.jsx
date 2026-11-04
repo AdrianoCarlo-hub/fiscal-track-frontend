@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import calculFiscalService from '../../services/calculFiscalService';
 import { messageErreur } from '../../services/api';
+import Button from '../ui/Button';
+import { Checkbox } from '../ui/FormControls';
+import { ChampMontant } from './ChampsCalcul';
 import { formatMontant } from '../../utils/formatUtils';
 
 export default function CalculIsForm({ onResultat, onErreur }) {
@@ -45,23 +48,19 @@ export default function CalculIsForm({ onResultat, onErreur }) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <Field label="CA brut (Ar) *" name="caBrut" type="number" value={form.caBrut} onChange={handleChange} required />
+      <ChampMontant label="CA brut (Ar) *" name="caBrut" type="number" value={form.caBrut} onChange={handleChange} required />
 
-      <div className="flex items-center gap-2">
-        <input type="checkbox" id="cga" name="adherentCga" checked={form.adherentCga} onChange={handleChange}
-          className="w-4 h-4" />
-        <label htmlFor="cga" className="text-sm">Adhérent CGA (abattement 50 % plafonné à 5 M Ar)</label>
-      </div>
+      <Checkbox id="cga" name="adherentCga" label="Adhérent CGA (abattement 50 % plafonné à 5 M Ar)" checked={form.adherentCga} onChange={handleChange} />
 
       <div className="grid grid-cols-2 gap-4">
-        <Field label="Achats conformes (Ar)" name="achatsConformes" type="number" value={form.achatsConformes} onChange={handleChange} />
-        <Field label="Charges salariales (Ar)" name="chargesSalariales" type="number" value={form.chargesSalariales} onChange={handleChange} />
+        <ChampMontant label="Achats conformes (Ar)" name="achatsConformes" type="number" value={form.achatsConformes} onChange={handleChange} />
+        <ChampMontant label="Charges salariales (Ar)" name="chargesSalariales" type="number" value={form.chargesSalariales} onChange={handleChange} />
       </div>
 
-      <Field label="Impôt de l’année précédente (Ar)" name="impotN1" type="number" value={form.impotN1} onChange={handleChange} />
+      <ChampMontant label="Impôt de l’année précédente (Ar)" name="impotN1" type="number" value={form.impotN1} onChange={handleChange} />
 
       {acompteSimule > 0 && (
-        <div className="rounded-lg border border-sky-200 bg-sky-50 p-3 text-sm text-sky-900">
+        <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 text-sm text-slate-800">
           <p className="font-semibold">Acomptes calculés (simulation, rien n’est enregistré)</p>
           <div className="mt-2 grid gap-2 sm:grid-cols-2">
             <p>Acompte AC1 (31 mars) : <strong>{formatMontant(acompteSimule)}</strong></p>
@@ -71,20 +70,8 @@ export default function CalculIsForm({ onResultat, onErreur }) {
         </div>
       )}
 
-      <button type="submit" disabled={chargement}
-        className="w-full bg-sky-500 hover:bg-sky-600 text-white font-semibold py-3 rounded-lg disabled:opacity-50">
-        {chargement ? 'Calcul…' : 'Calculer l’IS'}
-      </button>
+      <Button type="submit" chargement={chargement} size="lg" className="w-full">{chargement ? 'Calcul…' : 'Calculer l’IS'}</Button>
     </form>
   );
 }
 
-function Field({ label, name, type, value, onChange, required }) {
-  return (
-    <div>
-      <label className="block text-sm font-medium mb-1">{label}</label>
-      <input type={type} name={name} value={value} onChange={onChange} required={required}
-        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500 outline-none" />
-    </div>
-  );
-}

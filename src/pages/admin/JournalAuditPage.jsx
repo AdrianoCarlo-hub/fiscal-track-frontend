@@ -85,7 +85,10 @@ export default function JournalAuditPage() {
   const [tacheEnCours, setTacheEnCours] = useState(null);
 
   const historique = useMemo(() => data || [], [data]);
-  const liste = useListView(historique, 15);
+  const liste = useListView(historique, 15, {
+    cleUrl: 'audit',
+    champs: ['utilisateur', 'action', 'details', 'adresseIp', 'dateAction'],
+  });
   const utilisateurs = useMemo(
     () => new Set(historique.map((entree) => entree.utilisateur).filter(Boolean)).size,
     [historique],
@@ -180,11 +183,12 @@ export default function JournalAuditPage() {
                 onChange={liste.setQuery}
                 placeholder="Rechercher un utilisateur, une action ou un détail…"
                 count={liste.filteredCount}
+                onReinitialiser={liste.reinitialiser}
               />
               <DataTable
                 colonnes={colonnes}
                 donnees={liste.items}
-                pagination={liste.pagination}
+                pagination={{ ...liste.pagination, onTailleChange: liste.setTaille }}
                 onPageChange={liste.setPage}
                 rechercheActive={Boolean(liste.query)}
                 onEffacerRecherche={liste.clear}

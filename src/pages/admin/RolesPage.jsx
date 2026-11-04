@@ -72,7 +72,10 @@ export default function RolesPage() {
       }),
     [],
   );
-  const liste = useListView(roles, 10);
+  const liste = useListView(roles, 10, {
+    cleUrl: 'roles',
+    champs: ['code', 'description', 'descriptionPermissions'],
+  });
 
   return (
     <div>
@@ -98,6 +101,7 @@ export default function RolesPage() {
         onChange={liste.setQuery}
         placeholder="Rechercher un rôle ou une permission…"
         count={liste.filteredCount}
+        onReinitialiser={liste.reinitialiser}
       />
 
       {liste.filteredCount === 0 ? (

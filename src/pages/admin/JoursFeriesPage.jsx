@@ -33,7 +33,10 @@ export default function JoursFeriesPage() {
     [jours],
   );
   const joursAffiches = annee ? jours.filter((jour) => String(jour.dateFerie).startsWith(annee)) : jours;
-  const liste = useListView(joursAffiches);
+  const liste = useListView(joursAffiches, 10, {
+    cleUrl: 'jours-feries',
+    champs: ['dateFerie', 'description'],
+  });
 
   const anneeCourante = String(new Date().getFullYear());
   const dansAnneeCourante = jours.filter((jour) => String(jour.dateFerie).startsWith(anneeCourante)).length;
@@ -134,6 +137,10 @@ export default function JoursFeriesPage() {
             onChange={liste.setQuery}
             placeholder="Rechercher une date ou une description…"
             count={liste.filteredCount}
+            onReinitialiser={() => {
+              liste.reinitialiser();
+              setAnnee('');
+            }}
             actions={
               <select
                 aria-label="Filtrer par année"
@@ -154,7 +161,7 @@ export default function JoursFeriesPage() {
           <DataTable
             colonnes={colonnes}
             donnees={liste.items}
-            pagination={liste.pagination}
+            pagination={{ ...liste.pagination, onTailleChange: liste.setTaille }}
             onPageChange={liste.setPage}
             rechercheActive={Boolean(liste.query || annee)}
             onEffacerRecherche={() => {

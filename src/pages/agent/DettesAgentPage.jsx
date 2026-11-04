@@ -28,7 +28,10 @@ export default function DettesAgentPage() {
   const titresEmis = comptes.filter((compte) => compte.statutRecouvrement === 'TITRE_EMIS').length;
   const atd = comptes.filter((compte) => compte.statutRecouvrement === 'ATD_LANCE').length;
 
-  const vue = useListView(comptes, 10);
+  const vue = useListView(comptes, 10, {
+    cleUrl: 'agent-dettes',
+    champs: ['idCompte', 'nif', 'idDeclaration', 'statutRecouvrement', 'resteARecouvrer'],
+  });
 
   const colonnes = [
     {
@@ -134,6 +137,7 @@ export default function DettesAgentPage() {
             onChange={vue.setQuery}
             placeholder="Rechercher par compte, NIF ou statut…"
             count={vue.filteredCount}
+            onReinitialiser={vue.reinitialiser}
           />
           <DataTable
             colonnes={colonnes}
@@ -141,7 +145,7 @@ export default function DettesAgentPage() {
             chargement={chargement}
             erreur={erreur}
             onReessayer={recharger}
-            pagination={vue.pagination}
+            pagination={{ ...vue.pagination, onTailleChange: vue.setTaille }}
             onPageChange={vue.setPage}
             rechercheActive={!!vue.query}
             onEffacerRecherche={vue.clear}

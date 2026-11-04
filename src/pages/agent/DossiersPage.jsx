@@ -4,40 +4,33 @@ import { FileSearch, Plus } from 'lucide-react';
 import { useAuth } from '../../context/useAuth';
 import { peut } from '../../auth/permissions';
 import contribuableService from '../../services/contribuableService';
-import useApiData from '../../hooks/useApiData';
+import { useListePaginee } from '../../hooks/useApiData';
 import { useToast } from '../../context/notificationContext';
 import PageHeader from '../../components/ui/PageHeader';
 import SectionCard from '../../components/ui/SectionCard';
 import DataTable, { ListToolbar } from '../../components/common/DataTable';
 import Button from '../../components/ui/Button';
 import StatutBadge from '../../components/ui/StatutBadge';
-import NouveauContribuableModal from '../../components/common/NouveauContribuableModal';
+import ContribuableForm from '../../components/forms/ContribuableForm';
 import { libelle } from '../../utils/libelles';
 
 export default function DossiersPage() {
   const { utilisateur } = useAuth();
   const { notifier } = useToast();
-  const [page, setPage] = useState(0);
-  const [recherche, setRecherche] = useState('');
   const [creationOuverte, setCreationOuverte] = useState(false);
-  const [rafraichir, setRafraichir] = useState(0);
 
-  const { data, chargement, erreur, recharger } = useApiData(
-    () =>
-      recherche.trim()
-        ? contribuableService.rechercherPagine(recherche.trim(), page, 10)
-        : contribuableService.listerPagine(page, 10),
-    [page, recherche, rafraichir],
+  const liste = useListePaginee(
+    (page, taille) => contribuableService.listerPagine(page, taille),
+    () => contribuableService.lister(),
+    {
+      cleUrl: 'dossiers',
+      champs: ['nif', 'raisonSociale', 'communeContribuable', 'formeJuridique'],
+    },
   );
-
-  const modifierRecherche = (valeur) => {
-    setRecherche(valeur);
-    setPage(0);
-  };
 
   const apresCreation = () => {
     setCreationOuverte(false);
-    setRafraichir((valeur) => valeur + 1);
+    liste.recharger();
     notifier({
       variante: 'succes',
       titre: 'Dossier créé',
@@ -117,40 +110,35 @@ export default function DossiersPage() {
         <div className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-3 py-2 text-sm font-medium text-primary">
             <FileSearch className="h-4 w-4" aria-hidden="true" />
-            {data?.totalElements ?? 0} dossier{(data?.totalElements ?? 0) > 1 ? 's' : ''}
+            {liste.total} dossier{liste.total > 1 ? 's' : ''}
           </div>
         </div>
         <div className="px-5 pb-5">
           <ListToolbar
-            value={recherche}
-            onChange={modifierRecherche}
+            value={liste.query}
+            onChange={liste.setQuery}
             placeholder="Rechercher par NIF, raison sociale ou commune…"
-            count={data?.totalElements}
+            count={liste.filteredCount}
+            onReinitialiser={liste.reinitialiser}
           />
           <DataTable
             colonnes={colonnes}
-            donnees={data?.content || []}
-            chargement={chargement}
-            erreur={erreur}
-            onReessayer={recharger}
-            pagination={
-              data
-                ? {
-                    page: data.number,
-                    totalPages: data.totalPages,
-                    totalElements: data.totalElements,
-                    size: data.size,
-                  }
-                : null
-            }
-            onPageChange={setPage}
-            rechercheActive={Boolean(recherche)}
-            onEffacerRecherche={() => modifierRecherche('')}
-            titreVide="Aucun dossier"
+            donnees={liste.items}
+            chargement={liste.chargement}
+            erreur={liste.erreur}
+            onReessayer={liste.recharger}
+            pagination={{
+              ...liste.pagination,
+              onTailleChange: liste.setTaille,
+            }}
+            onPageChange={liste.setPage}
+            rechercheActive={Boolean(liste.query)}
+            onEffacerRecherche={liste.clear}
+            titreVide="Aucun dossier ne correspond à cette recherche"
             descriptionVide={
-              recherche
-                ? 'Aucun contribuable ne correspond à cette recherche.'
-                : 'Aucun contribuable n’est encore enregistré.'
+              liste.query
+                ? 'Vérifiez le NIF, la raison sociale ou la commune, puis relancez la recherche.'
+                : 'Aucun contribuable n’est encore enregistré dans ce centre fiscal.'
             }
             cleLigne={(contribuable) => contribuable.nif}
           />
@@ -158,8 +146,8 @@ export default function DossiersPage() {
       </SectionCard>
 
       {creationOuverte && (
-        <NouveauContribuableModal
-          isOpen={creationOuverte}
+        <ContribuableForm
+          creation
           onClose={() => setCreationOuverte(false)}
           onSuccess={apresCreation}
         />

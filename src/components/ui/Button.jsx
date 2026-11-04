@@ -1,3 +1,5 @@
+import { forwardRef } from 'react';
+
 const VARIANTES = {
   primary: 'bg-primary text-white shadow-sm hover:bg-primary/90',
   secondary: 'bg-primary/10 text-primary border border-primary/20 hover:bg-primary/15',
@@ -13,7 +15,7 @@ const TAILLES = {
   lg: 'px-5 py-3 text-base',
 };
 
-export default function Button({
+const Button = forwardRef(function Button({
   children,
   type = 'button',
   variant = 'primary',
@@ -22,15 +24,16 @@ export default function Button({
   className = '',
   disabled,
   ...props
-}) {
+}, ref) {
   const estLien = variant === 'lien';
   return (
     <button
+      ref={ref}
       type={type}
       disabled={disabled || chargement}
       aria-busy={chargement ? 'true' : undefined}
       className={[
-        'inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-all duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60',
+        'inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-all duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60',
         VARIANTES[variant] || VARIANTES.primary,
         estLien ? '' : TAILLES[size] || TAILLES.md,
         className,
@@ -46,4 +49,6 @@ export default function Button({
       {children}
     </button>
   );
-}
+});
+
+export default Button;

@@ -20,10 +20,13 @@ import { formatDateHeure, formatMontant } from '../../utils/formatUtils';
 import { libelleImpot } from '../../utils/fiscalConstants';
 
 async function chargerDeclarations() {
-  const [declarations, obligations] = await Promise.all([
+  const [resultatDeclarations, resultatObligations] = await Promise.allSettled([
     declarationService.lister(),
     obligationService.lister(),
   ]);
+  if (resultatDeclarations.status === 'rejected') throw resultatDeclarations.reason;
+  const declarations = resultatDeclarations.value;
+  const obligations = resultatObligations.status === 'fulfilled' ? resultatObligations.value : [];
   const obligationsParId = new Map(
     (Array.isArray(obligations) ? obligations : []).map((obligation) => [
       obligation.idObligationFiscale,
@@ -46,7 +49,7 @@ export default function DeclarationsAgentPage() {
   const [rejet, setRejet] = useState(null);
   const [motifRejet, setMotifRejet] = useState('');
   const [enCoursId, setEnCoursId] = useState(null);
-  const peutInstruire = peut(utilisateur?.role, 'declaration.instruire');
+  const peutInstruire = peut(utilisateur?.role, 'declaration.valider') || utilisateur?.role === 'RESPONSABLE' || peut(utilisateur?.role, 'declaration.instruire');
 
   const { data, chargement, erreur, recharger } = useApiData(chargerDeclarations, [], {
     valeurInitiale: [],
@@ -74,7 +77,17 @@ export default function DeclarationsAgentPage() {
     [declarations, filtre],
   );
 
-  const vue = useListView(filtrees, 10);
+  const vue = useListView(filtrees, 10, {
+    cleUrl: 'agent-declarations',
+    champs: [
+      'idDeclaration',
+      (declaration) => declaration.nif || declaration.obligation?.nif,
+      (declaration) => declaration.obligation?.codeImpot,
+      'dateDepot',
+      'statutValidation',
+      'montantARegler',
+    ],
+  });
 
   const valider = async (declaration) => {
     const confirme = await confirmer({
@@ -229,8 +242,7 @@ export default function DeclarationsAgentPage() {
       {!peutInstruire && (
         <Alert variante="info" titre="Consultation seule" className="mb-5">
           Votre rôle permet de consulter les déclarations, mais pas de les valider ou de les
-          rejeter. Seuls les agents de gestion, les responsables et les administrateurs peuvent
-          instruire un dossier.
+          rejeter. Seul le responsable peut valider ou rejeter les déclarations.
         </Alert>
       )}
 
@@ -256,6 +268,7 @@ export default function DeclarationsAgentPage() {
             onChange={vue.setQuery}
             placeholder="Rechercher par référence, NIF, montant ou date…"
             count={vue.filteredCount}
+            onReinitialiser={vue.reinitialiser}
           />
           <DataTable
             colonnes={colonnes}
@@ -263,7 +276,7 @@ export default function DeclarationsAgentPage() {
             chargement={chargement}
             erreur={erreur}
             onReessayer={recharger}
-            pagination={vue.pagination}
+            pagination={{ ...vue.pagination, onTailleChange: vue.setTaille }}
             onPageChange={vue.setPage}
             rechercheActive={!!vue.query}
             onEffacerRecherche={vue.clear}

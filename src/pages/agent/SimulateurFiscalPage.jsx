@@ -86,7 +86,7 @@ export default function SimulateurFiscalPage() {
           {resultat ? (
             <ResultatCalculCard resultat={resultat} />
           ) : (
-            <div className="flex min-h-[420px] items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 p-8 text-center">
+            <div className="flex min-h-[420px] items-center justify-center rounded-lg border-2 border-dashed border-slate-300 bg-slate-50 p-8 text-center">
               <div>
                 <CircleDollarSign className="mx-auto mb-4 h-10 w-10 text-slate-300" aria-hidden="true" />
                 <p className="text-lg font-medium text-slate-500">

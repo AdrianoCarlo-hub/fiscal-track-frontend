@@ -19,13 +19,13 @@ export function estNombre(valeur) {
 
 /** 1234000 -> "1 234 000 Ar" */
 export function formatMontant(montant) {
-  if (!estNombre(montant)) return '0 Ar';
+  if (!estNombre(montant)) return '—';
   return `${NOMBRE_MONTANT.format(Number(montant))} Ar`;
 }
 
 /** 1234000 -> "1,23 M Ar" (pour les cartes de synthese). */
 export function formatMontantCourt(montant) {
-  if (!estNombre(montant)) return '0 Ar';
+  if (!estNombre(montant)) return '—';
   const valeur = Number(montant);
   if (Math.abs(valeur) >= 1_000_000_000) {
     return `${NOMBRE_DECIMAL.format(valeur / 1_000_000_000)} Md Ar`;
@@ -151,35 +151,3 @@ export function libelleStatutRecouvrement(statut) {
   return libelles[statut] || '—';
 }
 
-export function getStatutAcompteColor(statut) {
-  const couleurs = {
-    PAYE: 'bg-green-100 text-green-700',
-    PARTIEL: 'bg-yellow-100 text-yellow-700',
-    A_PAYER: 'bg-sky-100 text-sky-700',
-    EN_RETARD: 'bg-red-100 text-red-700',
-  };
-  return couleurs[statut] || 'bg-slate-100 text-slate-700';
-}
-
-export function getStatutColor(statut) {
-  const couleurs = {
-    ACTIF: 'bg-green-100 text-green-700',
-    VEILLEUSE: 'bg-yellow-100 text-yellow-700',
-    RADIE: 'bg-slate-100 text-slate-700',
-    ATTENTE: 'bg-yellow-100 text-yellow-700',
-    DEPOSE: 'bg-green-100 text-green-700',
-    RETARD: 'bg-red-100 text-red-700',
-    SOLDE: 'bg-green-100 text-green-700',
-    PARTIEL: 'bg-yellow-100 text-yellow-700',
-    NON_SOLDE: 'bg-red-100 text-red-700',
-    TITRE_EMIS: 'bg-orange-100 text-orange-700',
-    ATD_LANCE: 'bg-red-100 text-red-700',
-    EN_ATTENTE_VALIDATION: 'bg-yellow-100 text-yellow-700',
-    VALIDEE: 'bg-green-100 text-green-700',
-    REJETEE: 'bg-red-100 text-red-700',
-    ENVOYE: 'bg-green-100 text-green-700',
-    EN_ATTENTE: 'bg-yellow-100 text-yellow-700',
-    ECHEC: 'bg-red-100 text-red-700',
-  };
-  return couleurs[statut] || 'bg-slate-100 text-slate-700';
-}

@@ -62,8 +62,14 @@ export default function PaiementsPage() {
     [comptes],
   );
 
-  const vuePaiements = useListView(paiements, 10);
-  const vueComptes = useListView(comptes, 10);
+  const vuePaiements = useListView(paiements, 10, {
+    cleUrl: 'paiements',
+    champs: ['referencePaiement', 'idCompte', 'modePaiement', 'statutValidation', 'datePaiement'],
+  });
+  const vueComptes = useListView(comptes, 10, {
+    cleUrl: 'comptes',
+    champs: ['idCompte', 'codeImpot', 'periodeFiscale', 'statutRecouvrement'],
+  });
 
   const colonnesPaiements = [
     {
@@ -209,6 +215,7 @@ export default function PaiementsPage() {
                 onChange={vuePaiements.setQuery}
                 placeholder="Rechercher par compte, mode ou référence…"
                 count={vuePaiements.filteredCount}
+                onReinitialiser={vuePaiements.reinitialiser}
               />
               <DataTable
                 colonnes={colonnesPaiements}
@@ -216,7 +223,7 @@ export default function PaiementsPage() {
                 chargement={chargement}
                 erreur={erreur}
                 onReessayer={recharger}
-                pagination={vuePaiements.pagination}
+                pagination={{ ...vuePaiements.pagination, onTailleChange: vuePaiements.setTaille }}
                 onPageChange={vuePaiements.setPage}
                 rechercheActive={!!vuePaiements.query}
                 onEffacerRecherche={vuePaiements.clear}
@@ -232,6 +239,7 @@ export default function PaiementsPage() {
                 onChange={vueComptes.setQuery}
                 placeholder="Rechercher un compte ou un statut…"
                 count={vueComptes.filteredCount}
+                onReinitialiser={vueComptes.reinitialiser}
               />
               <DataTable
                 colonnes={colonnesComptes}
@@ -239,7 +247,7 @@ export default function PaiementsPage() {
                 chargement={chargement}
                 erreur={erreur}
                 onReessayer={recharger}
-                pagination={vueComptes.pagination}
+                pagination={{ ...vueComptes.pagination, onTailleChange: vueComptes.setTaille }}
                 onPageChange={vueComptes.setPage}
                 rechercheActive={!!vueComptes.query}
                 onEffacerRecherche={vueComptes.clear}

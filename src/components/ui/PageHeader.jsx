@@ -1,17 +1,21 @@
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
+import { filArianePourPath } from '../../routes/configRoutes';
 import { ChevronRight } from 'lucide-react';
 
 /**
  * En-tete standard : fil d'Ariane, titre, description et actions.
  * `fil` : [{ libelle, to? }]
  */
-export default function PageHeader({ titre, description, actions, fil = [] }) {
+export default function PageHeader({ titre, description, actions, fil }) {
+  const { pathname } = useLocation();
+  const elements = fil === undefined ? filArianePourPath(pathname) : fil;
+
   return (
     <header className="mb-6">
-      {fil.length > 0 && (
+      {elements.length > 0 && (
         <nav aria-label="Fil d'Ariane" className="mb-3">
           <ol className="flex flex-wrap items-center gap-1 text-xs text-slate-500">
-            {fil.map((element, index) => (
+            {elements.map((element, index) => (
               <li key={`${element.libelle}-${index}`} className="flex items-center gap-1">
                 {index > 0 && <ChevronRight className="h-3 w-3 text-slate-400" aria-hidden="true" />}
                 {element.to ? (

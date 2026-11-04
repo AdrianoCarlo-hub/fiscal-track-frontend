@@ -16,7 +16,8 @@ describe('formatUtils', () => {
   it('formate un montant en ariary avec separateur de milliers', () => {
     expect(sansEspacesInsecables(formatMontant(1234000))).toBe('1 234 000 Ar');
     expect(formatMontant(0)).toBe('0 Ar');
-    expect(formatMontant(null)).toBe('0 Ar');
+    expect(formatMontant(null)).toBe('—');
+    expect(formatMontantCourt(null)).toBe('—');
   });
 
   it('formate un montant court pour les cartes de synthese', () => {

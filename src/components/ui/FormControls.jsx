@@ -38,7 +38,11 @@ export function Champ({
         {obligatoire && <span className="sr-only"> (obligatoire)</span>}
       </label>
       {children}
-      {aide && !erreur && <p className="mt-1.5 text-xs text-slate-500">{aide}</p>}
+      {aide && !erreur && (
+        <p id={`${id}-aide`} className="mt-1.5 text-xs text-slate-600">
+          {aide}
+        </p>
+      )}
       {erreur && (
         <p id={`${id}-erreur`} className="mt-1.5 flex items-start gap-1.5 text-xs font-medium text-danger" role="alert">
           <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
@@ -49,14 +53,14 @@ export function Champ({
   );
 }
 
-export function Input({ id, label, obligatoire, erreur, aide, className, ...props }) {
+export function Input({ id, label, obligatoire, erreur, aide, className, classNameInput = '', ...props }) {
   return (
     <Champ id={id} label={label} obligatoire={obligatoire} erreur={erreur} aide={aide} className={className}>
       <input
         id={id}
-        className={classesPour(erreur)}
+        className={`${classesPour(erreur)} ${classNameInput}`.trim()}
         aria-invalid={erreur ? 'true' : undefined}
-        aria-describedby={erreur ? `${id}-erreur` : undefined}
+        aria-describedby={erreur ? `${id}-erreur` : aide ? `${id}-aide` : undefined}
         required={obligatoire}
         {...props}
       />
@@ -71,6 +75,7 @@ export function Select({ id, label, obligatoire, erreur, aide, children, classNa
         id={id}
         className={classesPour(erreur)}
         aria-invalid={erreur ? 'true' : undefined}
+        aria-describedby={erreur ? `${id}-erreur` : aide ? `${id}-aide` : undefined}
         required={obligatoire}
         {...props}
       >
@@ -88,6 +93,7 @@ export function Textarea({ id, label, obligatoire, erreur, aide, className, rows
         rows={rows}
         className={classesPour(erreur)}
         aria-invalid={erreur ? 'true' : undefined}
+        aria-describedby={erreur ? `${id}-erreur` : aide ? `${id}-aide` : undefined}
         required={obligatoire}
         {...props}
       />
@@ -102,16 +108,22 @@ export function Checkbox({ id, label, description, erreur, ...props }) {
         <input
           id={id}
           type="checkbox"
-          className="mt-0.5 h-4 w-4 rounded border-slate-300 text-primary focus:ring-2 focus:ring-primary/30"
+          aria-invalid={erreur ? 'true' : undefined}
+          aria-describedby={erreur ? `${id}-erreur` : description ? `${id}-aide` : undefined}
+          className="mt-0.5 h-4 w-4 rounded border-slate-300 text-primary focus:ring-2 focus:ring-accent"
           {...props}
         />
         <label htmlFor={id} className="text-sm text-slate-700">
           {label}
-          {description && <span className="mt-0.5 block text-xs text-slate-500">{description}</span>}
+          {description && (
+            <span id={`${id}-aide`} className="mt-0.5 block text-xs text-slate-600">
+              {description}
+            </span>
+          )}
         </label>
       </div>
       {erreur && (
-        <p className="mt-1.5 text-xs font-medium text-danger" role="alert">
+        <p id={`${id}-erreur`} className="mt-1.5 text-xs font-medium text-danger" role="alert">
           {erreur}
         </p>
       )}

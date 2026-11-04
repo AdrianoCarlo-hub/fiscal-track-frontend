@@ -19,7 +19,10 @@ const PERIODICITES = options('periodicite');
 
 export default function TypesImpotsPage() {
   const { data, chargement, erreur, recharger } = useApiData(typeImpotService.lister, []);
-  const liste = useListView(data || []);
+  const liste = useListView(data || [], 10, {
+    cleUrl: 'types-impots',
+    champs: ['codeImpot', 'nomImpot', 'periodicite'],
+  });
   const { notifier } = useToast();
   const [modal, setModal] = useState(null);
 
@@ -90,12 +93,13 @@ export default function TypesImpotsPage() {
             onChange={liste.setQuery}
             placeholder="Rechercher un code, un impôt ou une périodicité…"
             count={liste.filteredCount}
+            onReinitialiser={liste.reinitialiser}
           />
 
           <DataTable
             colonnes={colonnes}
             donnees={liste.items}
-            pagination={liste.pagination}
+            pagination={{ ...liste.pagination, onTailleChange: liste.setTaille }}
             onPageChange={liste.setPage}
             rechercheActive={Boolean(liste.query)}
             onEffacerRecherche={liste.clear}

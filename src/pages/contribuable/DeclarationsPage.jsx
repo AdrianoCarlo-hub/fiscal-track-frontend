@@ -16,10 +16,13 @@ import { formatDate, formatDateHeure, formatMontant } from '../../utils/formatUt
 import { libelleImpot } from '../../utils/fiscalConstants';
 
 async function chargerDeclarations(nif) {
-  const [declarations, obligations] = await Promise.all([
+  const [resultatDeclarations, resultatObligations] = await Promise.allSettled([
     declarationService.parContribuable(nif),
     obligationService.parContribuable(nif),
   ]);
+  if (resultatDeclarations.status === 'rejected') throw resultatDeclarations.reason;
+  const declarations = resultatDeclarations.value;
+  const obligations = resultatObligations.status === 'fulfilled' ? resultatObligations.value : [];
   const obligationsParId = new Map(
     (Array.isArray(obligations) ? obligations : []).map((obligation) => [
       obligation.idObligationFiscale,
@@ -44,9 +47,19 @@ export default function DeclarationsPage() {
 
   const declarations = useMemo(() => (Array.isArray(data) ? data : []), [data]);
 
-  const { query, setQuery, clear, setPage, items, filteredCount, pagination } = useListView(
+  const { query, setQuery, clear, setPage, setTaille, reinitialiser, items, filteredCount, pagination } = useListView(
     declarations,
     10,
+    {
+      cleUrl: 'declarations',
+      champs: [
+        'obligation.codeImpot',
+        'obligation.periodeFiscale',
+        'statut',
+        'numeroDeclaration',
+        'referencePaiement',
+      ],
+    },
   );
 
   const colonnes = [
@@ -139,6 +152,7 @@ export default function DeclarationsPage() {
             onChange={setQuery}
             placeholder="Rechercher par référence, impôt, montant ou date…"
             count={filteredCount}
+            onReinitialiser={reinitialiser}
           />
           <DataTable
             colonnes={colonnes}
@@ -146,7 +160,7 @@ export default function DeclarationsPage() {
             chargement={chargement}
             erreur={erreur}
             onReessayer={recharger}
-            pagination={pagination}
+            pagination={{ ...pagination, onTailleChange: setTaille }}
             onPageChange={setPage}
             rechercheActive={!!query}
             onEffacerRecherche={clear}

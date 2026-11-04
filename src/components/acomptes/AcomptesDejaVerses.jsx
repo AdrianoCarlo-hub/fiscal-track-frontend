@@ -3,14 +3,9 @@ import {
   codePeriodeAcompte,
   echeancePeriodeAcompte,
   libellePeriodeAcompte,
-  libelleStatutAcompte,
 } from '../../utils/fiscalConstants';
-import {
-  formatDate,
-  formatMontant,
-  formatTaux,
-  getStatutAcompteColor,
-} from '../../utils/formatUtils';
+import { formatDate, formatMontant, formatTaux } from '../../utils/formatUtils';
+import StatutBadge from '../ui/StatutBadge';
 import { nombreMontant, statutAcompte } from '../../utils/acomptesUtils';
 
 function echeanceDe(ligne) {
@@ -55,7 +50,7 @@ export default function AcomptesDejaVerses({ detail, chargement = false }) {
     });
 
   return (
-    <section className="rounded-xl border border-slate-200 bg-white p-4 space-y-3">
+    <section className="rounded-lg border border-slate-200 bg-white p-4 space-y-3">
       <div>
         <h3 className="text-sm font-semibold text-slate-700">Acomptes déjà versés (calculés automatiquement)</h3>
         <p className="mt-1 text-xs text-slate-500">
@@ -97,9 +92,7 @@ export default function AcomptesDejaVerses({ detail, chargement = false }) {
                     <td className="px-3 py-2 text-right text-sm">{formatMontant(montantDu(ligne))}</td>
                     <td className="px-3 py-2 text-right text-sm text-green-700">{formatMontant(montantPaye(ligne))}</td>
                     <td className="px-3 py-2">
-                      <span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-semibold ${getStatutAcompteColor(statut)}`}>
-                        {libelleStatutAcompte(statut)}
-                      </span>
+                      <StatutBadge famille="statutAcompte" code={statut} />
                     </td>
                   </tr>
                 );

@@ -15,15 +15,23 @@ import { exporterCsv } from '../../utils/exportUtils';
 
 export default function RapportsPage() {
   const { data, chargement, erreur, recharger } = useApiData(async () => {
-    const [indicateurs, top10, retards] = await Promise.all([
+    const [resultatIndicateurs, resultatTop10, resultatRetards] = await Promise.allSettled([
       dashboardService.indicateurs(),
       dashboardService.top10Restes(),
       obligationService.retards(),
     ]);
-    return { indicateurs, top10, retards };
+    if (resultatIndicateurs.status === 'rejected') throw resultatIndicateurs.reason;
+    return {
+      indicateurs: resultatIndicateurs.value,
+      top10: resultatTop10.status === 'fulfilled' && Array.isArray(resultatTop10.value) ? resultatTop10.value : [],
+      retards: resultatRetards.status === 'fulfilled' && Array.isArray(resultatRetards.value) ? resultatRetards.value : [],
+    };
   }, []);
   const top10 = data?.top10 || [];
-  const liste = useListView(top10);
+  const liste = useListView(top10, 10, {
+    cleUrl: 'rapports-top',
+    champs: ['nif', 'statutRecouvrement', 'resteARecouvrer', 'montantTotalDu'],
+  });
 
   const exporterSynthese = (indicateurs) => {
     exporterCsv(
@@ -126,8 +134,8 @@ export default function RapportsPage() {
               icone={FileSpreadsheet}
               titre="Principaux restes à recouvrer"
               description="Classement des comptes courants présentant les soldes dus les plus élevés."
-              detail={`${top10.length} compte(s)`}
-              onExport={() => exporterTop10(top10)}
+              detail={`${liste.filteredCount} compte(s)`}
+              onExport={() => exporterTop10(liste.filtered)}
               desactive={top10.length === 0}
             />
             <CarteExport
@@ -156,12 +164,13 @@ export default function RapportsPage() {
               onChange={liste.setQuery}
               placeholder="Rechercher un NIF dans l’aperçu…"
               count={liste.filteredCount}
+              onReinitialiser={liste.reinitialiser}
             />
 
             <DataTable
               colonnes={colonnes}
               donnees={liste.items}
-              pagination={liste.pagination}
+              pagination={{ ...liste.pagination, onTailleChange: liste.setTaille }}
               onPageChange={liste.setPage}
               rechercheActive={Boolean(liste.query)}
               onEffacerRecherche={liste.clear}

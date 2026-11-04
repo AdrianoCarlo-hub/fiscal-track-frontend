@@ -13,9 +13,10 @@ const contribuableService = {
 
   rechercher: async (q) => (await api.get(`/api/contribuables/search?q=${q}`)).data,
 
-  rechercherPagine: async (q, page = 0, size = 20) =>
+  rechercherPagine: async (q, page = 0, size = 20, signal = undefined) =>
     (await api.get('/api/contribuables/search/paginated', {
       params: { q, page, size },
+      signal,
     })).data,
 
   creer: async (data) => (await api.post('/api/contribuables', data)).data,

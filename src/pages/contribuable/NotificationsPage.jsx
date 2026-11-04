@@ -38,9 +38,13 @@ export default function NotificationsPage() {
     [filtre, notifications, nonLues],
   );
 
-  const { query, setQuery, clear, setPage, items, filteredCount, pagination } = useListView(
+  const { query, setQuery, clear, setPage, setTaille, reinitialiser, items, filteredCount, pagination } = useListView(
     filtrees,
     10,
+    {
+      cleUrl: 'notifications',
+      champs: ['titre', 'message', 'typeRelance', 'canal', 'dateEnvoi'],
+    },
   );
 
   const marquerLue = async (notification) => {
@@ -63,7 +67,7 @@ export default function NotificationsPage() {
 
   const toutMarquer = useAsyncAction(
     async () => {
-      await Promise.all(nonLues.map((notification) => notificationService.marquerLue(notification.idNotif)));
+      await Promise.allSettled(nonLues.map((notification) => notificationService.marquerLue(notification.idNotif)));
       window.dispatchEvent(new Event(EVENEMENT_NOTIFICATIONS_LUES));
       await recharger();
     },
@@ -193,6 +197,7 @@ export default function NotificationsPage() {
             onChange={setQuery}
             placeholder="Rechercher par objet, message ou type…"
             count={filteredCount}
+            onReinitialiser={reinitialiser}
           />
           <DataTable
             colonnes={colonnes}
@@ -200,7 +205,7 @@ export default function NotificationsPage() {
             chargement={chargement}
             erreur={erreur}
             onReessayer={recharger}
-            pagination={pagination}
+            pagination={{ ...pagination, onTailleChange: setTaille }}
             onPageChange={setPage}
             rechercheActive={!!query}
             onEffacerRecherche={clear}

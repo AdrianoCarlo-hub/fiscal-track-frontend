@@ -11,6 +11,7 @@ export function ConfirmProvider({ children }) {
   const [demande, setDemande] = useState(null);
   const [enCours, setEnCours] = useState(false);
   const resoudreRef = useRef(null);
+  const panneauRef = useRef(null);
   const boutonAnnulerRef = useRef(null);
 
   const confirmer = useCallback((options) => {
@@ -29,15 +30,42 @@ export function ConfirmProvider({ children }) {
 
   useEffect(() => {
     if (!demande) return undefined;
+    const precedemmentFocalise = document.activeElement;
+    const overflowPrecedent = document.body.style.overflow;
+    const panneau = panneauRef.current;
     boutonAnnulerRef.current?.focus();
+
     const surTouche = (event) => {
-      if (event.key === 'Escape') fermer(false);
+      if (event.key === 'Escape') {
+        fermer(false);
+        return;
+      }
+      if (event.key !== 'Tab' || !panneau) return;
+      const focusables = [...panneau.querySelectorAll(
+        'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      )].filter((element) => element.offsetParent !== null);
+      if (focusables.length === 0) {
+        event.preventDefault();
+        panneau.focus();
+        return;
+      }
+      const premier = focusables[0];
+      const dernier = focusables[focusables.length - 1];
+      if (event.shiftKey && document.activeElement === premier) {
+        event.preventDefault();
+        dernier.focus();
+      } else if (!event.shiftKey && document.activeElement === dernier) {
+        event.preventDefault();
+        premier.focus();
+      }
     };
+
     document.addEventListener('keydown', surTouche);
     document.body.style.overflow = 'hidden';
     return () => {
       document.removeEventListener('keydown', surTouche);
-      document.body.style.overflow = '';
+      document.body.style.overflow = overflowPrecedent;
+      if (precedemmentFocalise instanceof HTMLElement) precedemmentFocalise.focus();
     };
   }, [demande, fermer]);
 
@@ -55,11 +83,13 @@ export function ConfirmProvider({ children }) {
             className="absolute inset-0 bg-[#101936]/60 backdrop-blur-sm"
           />
           <div
+            ref={panneauRef}
             role="alertdialog"
             aria-modal="true"
             aria-labelledby="confirmation-titre"
             aria-describedby="confirmation-message"
-            className="relative w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl animate-[fadeIn_150ms_ease-out]"
+            tabIndex={-1}
+            className="relative w-full max-w-md rounded-lg border border-slate-200 bg-white p-6 shadow-lg outline-none animate-[fadeIn_150ms_ease-out]"
           >
             <div className="flex items-start gap-3">
               <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#FFF8E1] text-[#8A6200]">
